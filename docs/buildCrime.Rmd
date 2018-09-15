@@ -20,6 +20,7 @@ library(dplyr)         # data wrangling
 # other packages
 library(compstatr)     # work with stlmpd crime data
 library(ggmap)         # batch geocoding
+library(janitor)       # frequency tables
 library(here)          # file path management
 ```
 
@@ -103,14 +104,31 @@ part1Crimes <- cs_missing_xy(part1Crimes, varx = XCoord, vary = YCoord, newVar =
 table(part1Crimes$xyCheck)
 ```
 
-About 2% of the part 1 crimes are missing spatial data. Since these have the same root data, we'll pull out those observations that are missing spatial data and attempt to geocode them with the Google Maps API.
+About 2% of the part 1 crimes are missing spatial data. Since these have the same root data, we'll pull out those observations that are missing spatial data and attempt to geocode them with the Google Maps API. 
+
+We start with 494 observations
 
 ```{r geocode}
-missingXY <- filter(part1Crimes, xyCheck == FALSE)
+part1Crimes %>% 
+  filter(xyCheck == TRUE) %>%
+  filter(ILEADSStreet != "UNKNOWN") %>%
+  mutate(fullAddress = paste0(ILEADSAddress, " ", ILEADSStreet, ", St. Louis, MO" )) -> missingXY
 
-missingXY <- mutate(missingXY, fullAddress = paste0(ILEADSAddress, " ", ILEADSStreet, ", St. Louis, MO" ))
+nrow(missingXY)
 ```
 
-```r
-missingXY <- mutate_geocode(missingXY, location = fullAddress, output = "latlon", source = "google")
+Removing the truly "unknown" addresses yields a set of 429 addresses that could potentially be geocoded.
+
+```{r tabulate-missinXY}
+missingXY %>%
+  tabyl(Description)
 ```
+
+Rape incidents comprise almost 66% of these incidents that cannot be located.
+
+```{r geocode-missingXY, eval=FALSE}
+source(here("source", "geocodeCrimes.R"))
+```
+
+
+
