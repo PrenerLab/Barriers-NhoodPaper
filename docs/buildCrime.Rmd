@@ -7,17 +7,110 @@ output:
   html_notebook: default 
 ---
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+## Introduction
+This notebook creates the crime data set for further analysis.
 
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+## Dependencies
+This notebook depends on the following packages:
 
-```{r}
-plot(cars)
+```{r load-packages}
+# tidyverse packages
+library(dplyr)         # data wrangling
+
+# other packages
+library(compstatr)     # work with stlmpd crime data
+library(ggmap)         # batch geocoding
+library(here)          # file path management
 ```
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+## Create Data
+Data downloaded from the STLMPD website come in `.csv` format but with the wrong file extension. The following bash script copies them to a new subdirectory and fixes the file extension issue:
 
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+```{bash}
+# change working directory
+cd ..
 
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+# create csv folder
+mkdir data/raw/stlmpd/csv
 
+# copy html files new directory for csv
+cp -r data/raw/stlmpd/html/* data/raw/stlmpd/csv
+
+# change file extensions
+for file in data/raw/stlmpd/csv/*.html
+do
+  mv "$file" "${file%%.*}.${file##*.}"
+done
+
+for file in data/raw/stlmpd/csv/*.html
+do
+  mv "$file" "${file%.html}.csv"
+done
+```
+
+## Load Data
+With our data renamed, we build a year list object for 2016 crimes:
+
+```{r load-data}
+data2016 <- cs_load_year(here("data", "raw", "stlmpd", "csv"))
+```
+
+## Validate Data
+Next we make sure there are no problems with the crime files in terms of incongruent columns:
+
+```{r validate-data}
+cs_validate_year(data2016, year = "2016")
+```
+
+All of the data passes the validation checks.
+
+## Collapse Data
+With the data validated, we collapse it into a single, flat object:
+
+```{r collapse-data}
+data2016_flat <- cs_collapse(data2016)
+```
+
+## Remove Unfounded Crimes and Subset Based on Type of Crime:
+The following code chunk removes unfounded crimes (those where `Count == -1`) and then creates two data frames, one for violent crimes and one for all part one crimes:
+
+```{r subset-data}
+# violent crimes
+data2016_flat %>% 
+  cs_filter_count(var = Count) %>%
+  cs_filter_crime(var = Crime, crime = "Violent") -> violentCrimes
+
+# part 1 crimes
+data2016_flat %>% 
+  cs_filter_count(var = Count) %>%
+  cs_filter_crime(var = Crime, crime = "Part 1") -> part1Crimes
+```
+
+## Check for and Address Missing Spatial Data
+Before proceeding, we'll check for missing spatial data.
+
+```{r check-xy-violent}
+violentCrimes <- cs_missing_xy(violentCrimes, varx = XCoord, vary = YCoord, newVar = xyCheck)
+
+table(violentCrimes$xyCheck)
+```
+
+About 6% of the violent crimes are missing spatial data.
+
+```{r check-xy-p1}
+part1Crimes <- cs_missing_xy(part1Crimes, varx = XCoord, vary = YCoord, newVar = xyCheck)
+
+table(part1Crimes$xyCheck)
+```
+
+About 2% of the part 1 crimes are missing spatial data. Since these have the same root data, we'll pull out those observations that are missing spatial data and attempt to geocode them with the Google Maps API.
+
+```{r geocode}
+missingXY <- filter(part1Crimes, xyCheck == FALSE)
+
+missingXY <- mutate(missingXY, fullAddress = paste0(ILEADSAddress, " ", ILEADSStreet, ", St. Louis, MO" ))
+```
+
+```r
+missingXY <- mutate_geocode(missingXY, location = fullAddress, output = "latlon", source = "google")
+```

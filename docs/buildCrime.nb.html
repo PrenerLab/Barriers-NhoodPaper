@@ -1702,21 +1702,178 @@ $(document).ready(function () {
 
 
 <!-- rnb-text-begin -->
-<p>This is an <a href="http://rmarkdown.rstudio.com">R Markdown</a> Notebook. When you execute code within the notebook, the results appear beneath the code.</p>
-<p>Try executing this chunk by clicking the <em>Run</em> button within the chunk or by placing your cursor inside it and pressing <em>Cmd+Shift+Enter</em>.</p>
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>This notebook creates the crime data set for further analysis.</p>
+</div>
+<div id="dependencies" class="section level2">
+<h2>Dependencies</h2>
+<p>This notebook depends on the following packages:</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucGxvdChjYXJzKVxuYGBgIn0= -->
-<pre class="r"><code>plot(cars)</code></pre>
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyB0aWR5dmVyc2UgcGFja2FnZXNcbmxpYnJhcnkoZHBseXIpICAgICAgICAgIyBkYXRhIHdyYW5nbGluZ1xuYGBgIn0= -->
+<pre class="r"><code># tidyverse packages
+library(dplyr)         # data wrangling</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiXG5BdHRhY2hpbmcgcGFja2FnZTog4oCYZHBseXLigJlcblxuVGhlIGZvbGxvd2luZyBvYmplY3RzIGFyZSBtYXNrZWQgZnJvbSDigJhwYWNrYWdlOnN0YXRz4oCZOlxuXG4gICAgZmlsdGVyLCBsYWdcblxuVGhlIGZvbGxvd2luZyBvYmplY3RzIGFyZSBtYXNrZWQgZnJvbSDigJhwYWNrYWdlOmJhc2XigJk6XG5cbiAgICBpbnRlcnNlY3QsIHNldGRpZmYsIHNldGVxdWFsLCB1bmlvblxuIn0= -->
+<pre><code>
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyBvdGhlciBwYWNrYWdlc1xubGlicmFyeShjb21wc3RhdHIpICAgICAjIHdvcmsgd2l0aCBzdGxtcGQgY3JpbWUgZGF0YVxubGlicmFyeShnZ21hcCkgICAgICAgICAjIGJhdGNoIGdlb2NvZGluZ1xubGlicmFyeShoZXJlKSAgICAgICAgICAjIGZpbGUgcGF0aCBtYW5hZ2VtZW50XG5gYGAifQ== -->
+<pre class="r"><code># other packages
+library(compstatr)     # work with stlmpd crime data
+library(ggmap)         # batch geocoding
+library(here)          # file path management</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiaGVyZSgpIHN0YXJ0cyBhdCAvVXNlcnMvY2hyaXMvR2l0SHViL0xhYi9CYXJyaWVycy1OaG9vZFBhcGVyXG4ifQ== -->
+<pre><code>here() starts at /Users/chris/GitHub/Lab/Barriers-NhoodPaper</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+</div>
+<div id="create-data" class="section level2">
+<h2>Create Data</h2>
+<p>Data downloaded from the STLMPD website come in <code>.csv</code> format but with the wrong file extension. The following bash script copies them to a new subdirectory and fixes the file extension issue:</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgYmFzaFxuIyBjaGFuZ2Ugd29ya2luZyBkaXJlY3RvcnlcbmNkIC4uXG5cbiMgY3JlYXRlIGNzdiBmb2xkZXJcbm1rZGlyIGRhdGEvcmF3L3N0bG1wZC9jc3ZcblxuIyBjb3B5IGh0bWwgZmlsZXMgbmV3IGRpcmVjdG9yeSBmb3IgY3N2XG5jcCAtciBkYXRhL3Jhdy9zdGxtcGQvaHRtbC8qIGRhdGEvcmF3L3N0bG1wZC9jc3ZcblxuIyBjaGFuZ2UgZmlsZSBleHRlbnNpb25zXG5mb3IgZmlsZSBpbiBkYXRhL3Jhdy9zdGxtcGQvY3N2LyouaHRtbFxuZG9cbiAgbXYgXCIkZmlsZVwiIFwiJHtmaWxlJSUuKn0uJHtmaWxlIyMqLn1cIlxuZG9uZVxuXG5mb3IgZmlsZSBpbiBkYXRhL3Jhdy9zdGxtcGQvY3N2LyouaHRtbFxuZG9cbiAgbXYgXCIkZmlsZVwiIFwiJHtmaWxlJS5odG1sfS5jc3ZcIlxuZG9uZVxuYGBgIn0= -->
+<pre class="bash"><code># change working directory
+cd ..
+
+# create csv folder
+mkdir data/raw/stlmpd/csv
+
+# copy html files new directory for csv
+cp -r data/raw/stlmpd/html/* data/raw/stlmpd/csv
+
+# change file extensions
+for file in data/raw/stlmpd/csv/*.html
+do
+  mv &quot;$file&quot; &quot;${file%%.*}.${file##*.}&quot;
+done
+
+for file in data/raw/stlmpd/csv/*.html
+do
+  mv &quot;$file&quot; &quot;${file%.html}.csv&quot;
+done</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoibWtkaXI6IGRhdGEvcmF3L3N0bG1wZC9jc3Y6IEZpbGUgZXhpc3RzXG4ifQ== -->
+<pre><code>mkdir: data/raw/stlmpd/csv: File exists</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+</div>
+<div id="load-data" class="section level2">
+<h2>Load Data</h2>
+<p>With our data renamed, we build a year list object for 2016 crimes:</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZGF0YTIwMTYgPC0gY3NfbG9hZF95ZWFyKGhlcmUoXCJkYXRhXCIsIFwicmF3XCIsIFwic3RsbXBkXCIsIFwiY3N2XCIpKVxuYGBgIn0= -->
+<pre class="r"><code>data2016 &lt;- cs_load_year(here(&quot;data&quot;, &quot;raw&quot;, &quot;stlmpd&quot;, &quot;csv&quot;))</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
-<p>Add a new chunk by clicking the <em>Insert Chunk</em> button on the toolbar or by pressing <em>Cmd+Option+I</em>.</p>
-<p>When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the <em>Preview</em> button or press <em>Cmd+Shift+K</em> to preview the HTML file).</p>
-<p>The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike <em>Knit</em>, <em>Preview</em> does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.</p>
+</div>
+<div id="validate-data" class="section level2">
+<h2>Validate Data</h2>
+<p>Next we make sure there are no problems with the crime files in terms of incongruent columns:</p>
 <!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuY3NfdmFsaWRhdGVfeWVhcihkYXRhMjAxNiwgeWVhciA9IFwiMjAxNlwiKVxuYGBgIn0= -->
+<pre class="r"><code>cs_validate_year(data2016, year = &quot;2016&quot;)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-frame-begin eyJtZXRhZGF0YSI6eyJjbGFzc2VzIjpbInRibF9kZiIsInRibCIsImRhdGEuZnJhbWUiXSwibmNvbCI6NywibnJvdyI6MTJ9LCJyZGYiOiJINHNJQUFBQUFBQUFBOTFUc1U3RE1CQzlKQTFwb3JaQ2dvR0JBU0dFV01qQUR3QnF4WURVSW9HRXVyckJsRWlwSFRscGdhMmZ6TURjY0U3dldwcU5GVXZuOSs3bDdEdWZuY2ZCK0NvYVJ3RGdndWM3NEhwSVd5NU9EclFndFBnQjRCMGdDZEI2YUozckw2akhEUkMyQ2ZjSkR3bVBDSThKVHdoUENjOEl6d2t2Z0lmZHFVTUZlUGRDTWIyVEU2WkRZWmplNW1hcmZtNld6ZFdXWnB2WStaVHBrOHlaUGlRbDA1RmVNQjNJQkNHcWE3RU4rWnY5ODNVN2o4UlBNbEVVZEhFc1JpK2lGUEdyRVRQWkRGZW9jWGpBNGt5cjhvMmNzSFpHZHVsYWFHc2xoNzhDMmd1Uk5YelQxM1BGOXhqZzkyZGhDcTRGM2I2dDBhYmRxU1UwK2ozbWVycG83aEtucXFxK0VWYU40RURuWmFvVmhycjJsL0FiSjNaTVEraGkyaFRiSUM5dEw2alp6dnFOMThrY2FqN3pZSjNRcTJnam56YmFrMnFhS202R240bUo1Q2Zkd3dQVTljZTVTVGZuajFBdDRsS1hndU9pUkdlczFDZUQxUTlMQ1ZPTS9nTUFBQT09In0= -->
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":["month"],"name":[1],"type":["dbl"],"align":["right"]},{"label":["monthName"],"name":[2],"type":["chr"],"align":["left"]},{"label":["oneMonth"],"name":[3],"type":["lgl"],"align":["right"]},{"label":["valMonth"],"name":[4],"type":["lgl"],"align":["right"]},{"label":["varCount"],"name":[5],"type":["lgl"],"align":["right"]},{"label":["valVars"],"name":[6],"type":["lgl"],"align":["right"]},{"label":["valClasses"],"name":[7],"type":["lgl"],"align":["right"]}],"data":[{"1":"1","2":"Jan","3":"TRUE","4":"TRUE","5":"TRUE","6":"TRUE","7":"TRUE"},{"1":"2","2":"Feb","3":"TRUE","4":"TRUE","5":"TRUE","6":"TRUE","7":"TRUE"},{"1":"3","2":"Mar","3":"TRUE","4":"TRUE","5":"TRUE","6":"TRUE","7":"TRUE"},{"1":"4","2":"Apr","3":"TRUE","4":"TRUE","5":"TRUE","6":"TRUE","7":"TRUE"},{"1":"5","2":"May","3":"TRUE","4":"TRUE","5":"TRUE","6":"TRUE","7":"TRUE"},{"1":"6","2":"Jun","3":"TRUE","4":"TRUE","5":"TRUE","6":"TRUE","7":"TRUE"},{"1":"7","2":"Jul","3":"TRUE","4":"TRUE","5":"TRUE","6":"TRUE","7":"TRUE"},{"1":"8","2":"Aug","3":"TRUE","4":"TRUE","5":"TRUE","6":"TRUE","7":"TRUE"},{"1":"9","2":"Sep","3":"TRUE","4":"TRUE","5":"TRUE","6":"TRUE","7":"TRUE"},{"1":"10","2":"Oct","3":"TRUE","4":"TRUE","5":"TRUE","6":"TRUE","7":"TRUE"},{"1":"11","2":"Nov","3":"TRUE","4":"TRUE","5":"TRUE","6":"TRUE","7":"TRUE"},{"1":"12","2":"Dec","3":"TRUE","4":"TRUE","5":"TRUE","6":"TRUE","7":"TRUE"}],"options":{"columns":{"min":{},"max":[10],"total":[7]},"rows":{"min":[10],"max":[10],"total":[12]},"pages":{}}}
+  </script>
+</div>
+<!-- rnb-frame-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>All of the data passes the validation checks.</p>
+</div>
+<div id="collapse-data" class="section level2">
+<h2>Collapse Data</h2>
+<p>With the data validated, we collapse it into a single, flat object:</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZGF0YTIwMTZfZmxhdCA8LSBjc19jb2xsYXBzZShkYXRhMjAxNilcbmBgYCJ9 -->
+<pre class="r"><code>data2016_flat &lt;- cs_collapse(data2016)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+</div>
+<div id="remove-unfounded-crimes-and-subset-based-on-type-of-crime" class="section level2">
+<h2>Remove Unfounded Crimes and Subset Based on Type of Crime:</h2>
+<p>The following code chunk removes unfounded crimes (those where <code>Count == -1</code>) and then creates two data frames, one for violent crimes and one for all part one crimes:</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIyB2aW9sZW50IGNyaW1lc1xuZGF0YTIwMTZfZmxhdCAlPiUgXG4gIGNzX2ZpbHRlcl9jb3VudCh2YXIgPSBDb3VudCkgJT4lXG4gIGNzX2ZpbHRlcl9jcmltZSh2YXIgPSBDcmltZSwgY3JpbWUgPSBcIlZpb2xlbnRcIikgLT4gdmlvbGVudENyaW1lc1xuIyBwYXJ0IDEgY3JpbWVzXG5kYXRhMjAxNl9mbGF0ICU+JSBcbiAgY3NfZmlsdGVyX2NvdW50KHZhciA9IENvdW50KSAlPiVcbiAgY3NfZmlsdGVyX2NyaW1lKHZhciA9IENyaW1lLCBjcmltZSA9IFwiUGFydCAxXCIpIC0+IHBhcnQxQ3JpbWVzXG5gYGAifQ== -->
+<pre class="r"><code># violent crimes
+data2016_flat %&gt;% 
+  cs_filter_count(var = Count) %&gt;%
+  cs_filter_crime(var = Crime, crime = &quot;Violent&quot;) -&gt; violentCrimes
+# part 1 crimes
+data2016_flat %&gt;% 
+  cs_filter_count(var = Count) %&gt;%
+  cs_filter_crime(var = Crime, crime = &quot;Part 1&quot;) -&gt; part1Crimes</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+</div>
+<div id="check-for-and-address-missing-spatial-data" class="section level2">
+<h2>Check for and Address Missing Spatial Data</h2>
+<p>Before proceeding, we’ll check for missing spatial data.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudmlvbGVudENyaW1lcyA8LSBjc19taXNzaW5nX3h5KHZpb2xlbnRDcmltZXMsIHZhcnggPSBYQ29vcmQsIHZhcnkgPSBZQ29vcmQsIG5ld1ZhciA9IHh5Q2hlY2spXG50YWJsZSh2aW9sZW50Q3JpbWVzJHh5Q2hlY2spXG5gYGAifQ== -->
+<pre class="r"><code>violentCrimes &lt;- cs_missing_xy(violentCrimes, varx = XCoord, vary = YCoord, newVar = xyCheck)
+table(violentCrimes$xyCheck)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiXG5GQUxTRSAgVFJVRSBcbiA1NzQyICAgMzY4IFxuIn0= -->
+<pre><code>
+FALSE  TRUE 
+ 5742   368 </code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>About 6% of the violent crimes are missing spatial data.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucGFydDFDcmltZXMgPC0gY3NfbWlzc2luZ194eShwYXJ0MUNyaW1lcywgdmFyeCA9IFhDb29yZCwgdmFyeSA9IFlDb29yZCwgbmV3VmFyID0geHlDaGVjaylcbnRhYmxlKHBhcnQxQ3JpbWVzJHh5Q2hlY2spXG5gYGAifQ== -->
+<pre class="r"><code>part1Crimes &lt;- cs_missing_xy(part1Crimes, varx = XCoord, vary = YCoord, newVar = xyCheck)
+table(part1Crimes$xyCheck)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiXG5GQUxTRSAgVFJVRSBcbjI0OTk4ICAgNDk0IFxuIn0= -->
+<pre><code>
+FALSE  TRUE 
+24998   494 </code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>About 2% of the part 1 crimes are missing spatial data. Since these have the same root data, we’ll pull out those observations that are missing spatial data and attempt to geocode them with the Google Maps API.</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubWlzc2luZ1hZIDwtIGZpbHRlcihwYXJ0MUNyaW1lcywgeHlDaGVjayA9PSBGQUxTRSlcbm1pc3NpbmdYWSA8LSBtdXRhdGUobWlzc2luZ1hZLCBmdWxsQWRkcmVzcyA9IHBhc3RlMChJTEVBRFNBZGRyZXNzLCBcIiBcIiwgSUxFQURTU3RyZWV0LCBcIiwgU3QuIExvdWlzLCBNT1wiICkpXG5gYGAifQ== -->
+<pre class="r"><code>missingXY &lt;- filter(part1Crimes, xyCheck == FALSE)
+missingXY &lt;- mutate(missingXY, fullAddress = paste0(ILEADSAddress, &quot; &quot;, ILEADSStreet, &quot;, St. Louis, MO&quot; ))</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<pre class="r"><code>missingXY &lt;- mutate_geocode(missingXY, location = fullAddress, output = &quot;latlon&quot;, source = &quot;google&quot;)</code></pre>
+<!-- rnb-text-end -->
+</div>
 
-<div id="rmd-source-code">LS0tCnRpdGxlOiAiQnVpbGQgQ3JpbWUgRGF0YSBTZXQiCmF1dGhvcjogIkNocmlzdG9waGVyIFByZW5lciwgUGguRC4iCmRhdGU6ICcoYHIgZm9ybWF0KFN5cy50aW1lKCksICIlQiAlZCwgJVkiKWApJwpvdXRwdXQ6IAogIGdpdGh1Yl9kb2N1bWVudDogZGVmYXVsdAogIGh0bWxfbm90ZWJvb2s6IGRlZmF1bHQgCi0tLQoKVGhpcyBpcyBhbiBbUiBNYXJrZG93bl0oaHR0cDovL3JtYXJrZG93bi5yc3R1ZGlvLmNvbSkgTm90ZWJvb2suIFdoZW4geW91IGV4ZWN1dGUgY29kZSB3aXRoaW4gdGhlIG5vdGVib29rLCB0aGUgcmVzdWx0cyBhcHBlYXIgYmVuZWF0aCB0aGUgY29kZS4gCgpUcnkgZXhlY3V0aW5nIHRoaXMgY2h1bmsgYnkgY2xpY2tpbmcgdGhlICpSdW4qIGJ1dHRvbiB3aXRoaW4gdGhlIGNodW5rIG9yIGJ5IHBsYWNpbmcgeW91ciBjdXJzb3IgaW5zaWRlIGl0IGFuZCBwcmVzc2luZyAqQ21kK1NoaWZ0K0VudGVyKi4gCgpgYGB7cn0KcGxvdChjYXJzKQpgYGAKCkFkZCBhIG5ldyBjaHVuayBieSBjbGlja2luZyB0aGUgKkluc2VydCBDaHVuayogYnV0dG9uIG9uIHRoZSB0b29sYmFyIG9yIGJ5IHByZXNzaW5nICpDbWQrT3B0aW9uK0kqLgoKV2hlbiB5b3Ugc2F2ZSB0aGUgbm90ZWJvb2ssIGFuIEhUTUwgZmlsZSBjb250YWluaW5nIHRoZSBjb2RlIGFuZCBvdXRwdXQgd2lsbCBiZSBzYXZlZCBhbG9uZ3NpZGUgaXQgKGNsaWNrIHRoZSAqUHJldmlldyogYnV0dG9uIG9yIHByZXNzICpDbWQrU2hpZnQrSyogdG8gcHJldmlldyB0aGUgSFRNTCBmaWxlKS4gCgpUaGUgcHJldmlldyBzaG93cyB5b3UgYSByZW5kZXJlZCBIVE1MIGNvcHkgb2YgdGhlIGNvbnRlbnRzIG9mIHRoZSBlZGl0b3IuIENvbnNlcXVlbnRseSwgdW5saWtlICpLbml0KiwgKlByZXZpZXcqIGRvZXMgbm90IHJ1biBhbnkgUiBjb2RlIGNodW5rcy4gSW5zdGVhZCwgdGhlIG91dHB1dCBvZiB0aGUgY2h1bmsgd2hlbiBpdCB3YXMgbGFzdCBydW4gaW4gdGhlIGVkaXRvciBpcyBkaXNwbGF5ZWQuCgo=</div>
+<div id="rmd-source-code">LS0tCnRpdGxlOiAiQnVpbGQgQ3JpbWUgRGF0YSBTZXQiCmF1dGhvcjogIkNocmlzdG9waGVyIFByZW5lciwgUGguRC4iCmRhdGU6ICcoYHIgZm9ybWF0KFN5cy50aW1lKCksICIlQiAlZCwgJVkiKWApJwpvdXRwdXQ6IAogIGdpdGh1Yl9kb2N1bWVudDogZGVmYXVsdAogIGh0bWxfbm90ZWJvb2s6IGRlZmF1bHQgCi0tLQoKIyMgSW50cm9kdWN0aW9uClRoaXMgbm90ZWJvb2sgY3JlYXRlcyB0aGUgY3JpbWUgZGF0YSBzZXQgZm9yIGZ1cnRoZXIgYW5hbHlzaXMuCgojIyBEZXBlbmRlbmNpZXMKVGhpcyBub3RlYm9vayBkZXBlbmRzIG9uIHRoZSBmb2xsb3dpbmcgcGFja2FnZXM6CgpgYGB7ciBsb2FkLXBhY2thZ2VzfQojIHRpZHl2ZXJzZSBwYWNrYWdlcwpsaWJyYXJ5KGRwbHlyKSAgICAgICAgICMgZGF0YSB3cmFuZ2xpbmcKCiMgb3RoZXIgcGFja2FnZXMKbGlicmFyeShjb21wc3RhdHIpICAgICAjIHdvcmsgd2l0aCBzdGxtcGQgY3JpbWUgZGF0YQpsaWJyYXJ5KGdnbWFwKSAgICAgICAgICMgYmF0Y2ggZ2VvY29kaW5nCmxpYnJhcnkoaGVyZSkgICAgICAgICAgIyBmaWxlIHBhdGggbWFuYWdlbWVudApgYGAKCiMjIENyZWF0ZSBEYXRhCkRhdGEgZG93bmxvYWRlZCBmcm9tIHRoZSBTVExNUEQgd2Vic2l0ZSBjb21lIGluIGAuY3N2YCBmb3JtYXQgYnV0IHdpdGggdGhlIHdyb25nIGZpbGUgZXh0ZW5zaW9uLiBUaGUgZm9sbG93aW5nIGJhc2ggc2NyaXB0IGNvcGllcyB0aGVtIHRvIGEgbmV3IHN1YmRpcmVjdG9yeSBhbmQgZml4ZXMgdGhlIGZpbGUgZXh0ZW5zaW9uIGlzc3VlOgoKYGBge2Jhc2h9CiMgY2hhbmdlIHdvcmtpbmcgZGlyZWN0b3J5CmNkIC4uCgojIGNyZWF0ZSBjc3YgZm9sZGVyCm1rZGlyIGRhdGEvcmF3L3N0bG1wZC9jc3YKCiMgY29weSBodG1sIGZpbGVzIG5ldyBkaXJlY3RvcnkgZm9yIGNzdgpjcCAtciBkYXRhL3Jhdy9zdGxtcGQvaHRtbC8qIGRhdGEvcmF3L3N0bG1wZC9jc3YKCiMgY2hhbmdlIGZpbGUgZXh0ZW5zaW9ucwpmb3IgZmlsZSBpbiBkYXRhL3Jhdy9zdGxtcGQvY3N2LyouaHRtbApkbwogIG12ICIkZmlsZSIgIiR7ZmlsZSUlLip9LiR7ZmlsZSMjKi59Igpkb25lCgpmb3IgZmlsZSBpbiBkYXRhL3Jhdy9zdGxtcGQvY3N2LyouaHRtbApkbwogIG12ICIkZmlsZSIgIiR7ZmlsZSUuaHRtbH0uY3N2Igpkb25lCmBgYAoKIyMgTG9hZCBEYXRhCldpdGggb3VyIGRhdGEgcmVuYW1lZCwgd2UgYnVpbGQgYSB5ZWFyIGxpc3Qgb2JqZWN0IGZvciAyMDE2IGNyaW1lczoKCmBgYHtyIGxvYWQtZGF0YX0KZGF0YTIwMTYgPC0gY3NfbG9hZF95ZWFyKGhlcmUoImRhdGEiLCAicmF3IiwgInN0bG1wZCIsICJjc3YiKSkKYGBgCgojIyBWYWxpZGF0ZSBEYXRhCk5leHQgd2UgbWFrZSBzdXJlIHRoZXJlIGFyZSBubyBwcm9ibGVtcyB3aXRoIHRoZSBjcmltZSBmaWxlcyBpbiB0ZXJtcyBvZiBpbmNvbmdydWVudCBjb2x1bW5zOgoKYGBge3IgdmFsaWRhdGUtZGF0YX0KY3NfdmFsaWRhdGVfeWVhcihkYXRhMjAxNiwgeWVhciA9ICIyMDE2IikKYGBgCgpBbGwgb2YgdGhlIGRhdGEgcGFzc2VzIHRoZSB2YWxpZGF0aW9uIGNoZWNrcy4KCiMjIENvbGxhcHNlIERhdGEKV2l0aCB0aGUgZGF0YSB2YWxpZGF0ZWQsIHdlIGNvbGxhcHNlIGl0IGludG8gYSBzaW5nbGUsIGZsYXQgb2JqZWN0OgoKYGBge3IgY29sbGFwc2UtZGF0YX0KZGF0YTIwMTZfZmxhdCA8LSBjc19jb2xsYXBzZShkYXRhMjAxNikKYGBgCgojIyBSZW1vdmUgVW5mb3VuZGVkIENyaW1lcyBhbmQgU3Vic2V0IEJhc2VkIG9uIFR5cGUgb2YgQ3JpbWU6ClRoZSBmb2xsb3dpbmcgY29kZSBjaHVuayByZW1vdmVzIHVuZm91bmRlZCBjcmltZXMgKHRob3NlIHdoZXJlIGBDb3VudCA9PSAtMWApIGFuZCB0aGVuIGNyZWF0ZXMgdHdvIGRhdGEgZnJhbWVzLCBvbmUgZm9yIHZpb2xlbnQgY3JpbWVzIGFuZCBvbmUgZm9yIGFsbCBwYXJ0IG9uZSBjcmltZXM6CgpgYGB7ciBzdWJzZXQtZGF0YX0KIyB2aW9sZW50IGNyaW1lcwpkYXRhMjAxNl9mbGF0ICU+JSAKICBjc19maWx0ZXJfY291bnQodmFyID0gQ291bnQpICU+JQogIGNzX2ZpbHRlcl9jcmltZSh2YXIgPSBDcmltZSwgY3JpbWUgPSAiVmlvbGVudCIpIC0+IHZpb2xlbnRDcmltZXMKCiMgcGFydCAxIGNyaW1lcwpkYXRhMjAxNl9mbGF0ICU+JSAKICBjc19maWx0ZXJfY291bnQodmFyID0gQ291bnQpICU+JQogIGNzX2ZpbHRlcl9jcmltZSh2YXIgPSBDcmltZSwgY3JpbWUgPSAiUGFydCAxIikgLT4gcGFydDFDcmltZXMKYGBgCgojIyBDaGVjayBmb3IgYW5kIEFkZHJlc3MgTWlzc2luZyBTcGF0aWFsIERhdGEKQmVmb3JlIHByb2NlZWRpbmcsIHdlJ2xsIGNoZWNrIGZvciBtaXNzaW5nIHNwYXRpYWwgZGF0YS4KCmBgYHtyIGNoZWNrLXh5LXZpb2xlbnR9CnZpb2xlbnRDcmltZXMgPC0gY3NfbWlzc2luZ194eSh2aW9sZW50Q3JpbWVzLCB2YXJ4ID0gWENvb3JkLCB2YXJ5ID0gWUNvb3JkLCBuZXdWYXIgPSB4eUNoZWNrKQoKdGFibGUodmlvbGVudENyaW1lcyR4eUNoZWNrKQpgYGAKCkFib3V0IDYlIG9mIHRoZSB2aW9sZW50IGNyaW1lcyBhcmUgbWlzc2luZyBzcGF0aWFsIGRhdGEuCgpgYGB7ciBjaGVjay14eS1wMX0KcGFydDFDcmltZXMgPC0gY3NfbWlzc2luZ194eShwYXJ0MUNyaW1lcywgdmFyeCA9IFhDb29yZCwgdmFyeSA9IFlDb29yZCwgbmV3VmFyID0geHlDaGVjaykKCnRhYmxlKHBhcnQxQ3JpbWVzJHh5Q2hlY2spCmBgYAoKQWJvdXQgMiUgb2YgdGhlIHBhcnQgMSBjcmltZXMgYXJlIG1pc3Npbmcgc3BhdGlhbCBkYXRhLiBTaW5jZSB0aGVzZSBoYXZlIHRoZSBzYW1lIHJvb3QgZGF0YSwgd2UnbGwgcHVsbCBvdXQgdGhvc2Ugb2JzZXJ2YXRpb25zIHRoYXQgYXJlIG1pc3Npbmcgc3BhdGlhbCBkYXRhIGFuZCBhdHRlbXB0IHRvIGdlb2NvZGUgdGhlbSB3aXRoIHRoZSBHb29nbGUgTWFwcyBBUEkuCgpgYGB7ciBnZW9jb2RlfQptaXNzaW5nWFkgPC0gZmlsdGVyKHBhcnQxQ3JpbWVzLCB4eUNoZWNrID09IEZBTFNFKQoKbWlzc2luZ1hZIDwtIG11dGF0ZShtaXNzaW5nWFksIGZ1bGxBZGRyZXNzID0gcGFzdGUwKElMRUFEU0FkZHJlc3MsICIgIiwgSUxFQURTU3RyZWV0LCAiLCBTdC4gTG91aXMsIE1PIiApKQpgYGAKCmBgYHIKbWlzc2luZ1hZIDwtIG11dGF0ZV9nZW9jb2RlKG1pc3NpbmdYWSwgbG9jYXRpb24gPSBmdWxsQWRkcmVzcywgb3V0cHV0ID0gImxhdGxvbiIsIHNvdXJjZSA9ICJnb29nbGUiKQpgYGA=</div>
 
 
 
