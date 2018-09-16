@@ -14,12 +14,18 @@ This notebook creates the crime data set for further analysis.
 This notebook depends on the following packages:
 
 ```{r load-packages}
+# primary data tools
+library(compstatr)     # work with stlmpd crime data
+
 # tidyverse packages
 library(dplyr)         # data wrangling
 
-# other packages
-library(compstatr)     # work with stlmpd crime data
+# spatial packages
+library(gateway)       # work with st. louis spatial data
 library(ggmap)         # batch geocoding
+library(sf)
+
+# other packages
 library(janitor)       # frequency tables
 library(here)          # file path management
 ```
@@ -111,16 +117,18 @@ We start with 494 observations
 ```{r geocode}
 part1Crimes %>% 
   filter(xyCheck == TRUE) %>%
-  filter(ILEADSStreet != "UNKNOWN") %>%
-  mutate(fullAddress = paste0(ILEADSAddress, " ", ILEADSStreet, ", St. Louis, MO" )) -> missingXY
+  mutate(fullAddress = paste0(ILEADSAddress, " ", ILEADSStreet, ", St. Louis, MO" )) -> part1Crimes_miss
 
-nrow(missingXY)
+part1Crimes %>% 
+  filter(xyCheck == FALSE) -> part1Crimes_valid
+
+nrow(part1Crimes_miss)
 ```
 
 Removing the truly "unknown" addresses yields a set of 429 addresses that could potentially be geocoded.
 
 ```{r tabulate-missinXY}
-missingXY %>%
+part1Crimes_miss %>%
   tabyl(Description)
 ```
 
@@ -130,5 +138,29 @@ Rape incidents comprise almost 66% of these incidents that cannot be located.
 source(here("source", "geocodeCrimes.R"))
 ```
 
+## Project Both Sets of Data
 
+- need to filter out prior crimes
+- need to pull in data from 2017 / 2018 and search for 2016 crimes
+
+```{r project-valid}
+x <- st_as_sf(part1Crimes_valid, coords = c("XCoord", "YCoord"), crs = 32615)
+```
+
+
+```{r project-geocoded}
+
+```
+
+
+```{r combine-sf-objects}
+
+```
+
+## Export Data
+
+
+```{r export-data}
+
+```
 
