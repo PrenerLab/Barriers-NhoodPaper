@@ -1,7 +1,7 @@
 Build Crime Data Set
 ================
 Christopher Prener, Ph.D.
-(September 15, 2018)
+(September 16, 2018)
 
 ## Introduction
 
@@ -12,6 +12,9 @@ This notebook creates the crime data set for further analysis.
 This notebook depends on the following packages:
 
 ``` r
+# primary data tools
+library(compstatr)     # work with stlmpd crime data
+
 # tidyverse packages
 library(dplyr)         # data wrangling
 ```
@@ -28,19 +31,37 @@ library(dplyr)         # data wrangling
     ##     intersect, setdiff, setequal, union
 
 ``` r
-# other packages
-library(compstatr)     # work with stlmpd crime data
+# spatial packages
+library(gateway)       # work with st. louis spatial data
 library(ggmap)         # batch geocoding
 ```
 
     ## Loading required package: ggplot2
 
 ``` r
+library(sf)
+```
+
+    ## Linking to GEOS 3.6.1, GDAL 2.1.3, proj.4 4.9.3
+
+``` r
+# other packages
 library(janitor)       # frequency tables
 library(here)          # file path management
 ```
 
     ## here() starts at /Users/chris/GitHub/Lab/Barriers-NhoodPaper
+
+``` r
+library(testthat)      # unit testing
+```
+
+    ## 
+    ## Attaching package: 'testthat'
+
+    ## The following object is masked from 'package:dplyr':
+    ## 
+    ##     matches
 
 ## Create Data
 
@@ -52,32 +73,23 @@ subdirectory and fixes the file extension issue:
 # change working directory
 cd ..
 
-# create csv folder
-mkdir data/raw/stlmpd/csv
-
-# copy html files new directory for csv
-cp -r data/raw/stlmpd/html/* data/raw/stlmpd/csv
-
-# change file extensions
-for file in data/raw/stlmpd/csv/*.html
-do
-  mv "$file" "${file%%.*}.${file##*.}"
-done
-
-for file in data/raw/stlmpd/csv/*.html
-do
-  mv "$file" "${file%.html}.csv"
-done
+# execute cleaning script
+bash source/reformatHTML.sh
 ```
 
-    ## mkdir: data/raw/stlmpd/csv: File exists
+    ## mkdir: data/raw/stlmpd/csv/2016: File exists
+    ## mkdir: data/raw/stlmpd/csv/2017: File exists
+    ## mkdir: data/raw/stlmpd/csv/2018: File exists
 
 ## Load Data
 
-With our data renamed, we build a year list object for 2016 crimes:
+With our data renamed, we build a year list objects for 2016, 2017, and
+2017 crimes:
 
 ``` r
-data2016 <- cs_load_year(here("data", "raw", "stlmpd", "csv"))
+data2016 <- cs_load_year(here("data", "raw", "stlmpd", "csv", "2016"))
+data2017 <- cs_load_year(here("data", "raw", "stlmpd", "csv", "2017"))
+data2018 <- cs_load_year(here("data", "raw", "stlmpd", "csv", "2018"))
 ```
 
 ## Validate Data
@@ -105,7 +117,75 @@ cs_validate_year(data2016, year = "2016")
     ## 11    11 Nov       TRUE     TRUE     TRUE     TRUE    TRUE      
     ## 12    12 Dec       TRUE     TRUE     TRUE     TRUE    TRUE
 
-All of the data passes the validation checks.
+All of the data passes the validation
+    checks.
+
+``` r
+cs_validate_year(data2017, year = "2017")
+```
+
+    ## Warning in cs_validate_year(data2017, year = "2017"): Validation warning -
+    ## not all data tables contain the expected 20 variables.
+
+    ## Warning in cs_validate_year(data2017, year = "2017"): Validation warning -
+    ## not all data tables contain the expected variable names.
+
+    ## Warning in cs_validate_year(data2017, year = "2017"): Validation warning -
+    ## not all data tables contain the expected variable classes.
+
+    ## # A tibble: 12 x 7
+    ##    month monthName oneMonth valMonth varCount valVars valClasses
+    ##    <dbl> <chr>     <lgl>    <lgl>    <lgl>    <lgl>   <lgl>     
+    ##  1     1 Jan       TRUE     TRUE     TRUE     TRUE    TRUE      
+    ##  2     2 Feb       TRUE     TRUE     TRUE     TRUE    TRUE      
+    ##  3     3 Mar       TRUE     TRUE     TRUE     TRUE    TRUE      
+    ##  4     4 Apr       TRUE     TRUE     TRUE     TRUE    TRUE      
+    ##  5     5 May       TRUE     TRUE     FALSE    NA      NA        
+    ##  6     6 Jun       TRUE     TRUE     TRUE     TRUE    TRUE      
+    ##  7     7 Jul       TRUE     TRUE     TRUE     TRUE    TRUE      
+    ##  8     8 Aug       TRUE     TRUE     TRUE     TRUE    TRUE      
+    ##  9     9 Sep       TRUE     TRUE     TRUE     TRUE    TRUE      
+    ## 10    10 Oct       TRUE     TRUE     TRUE     TRUE    TRUE      
+    ## 11    11 Nov       TRUE     TRUE     TRUE     TRUE    TRUE      
+    ## 12    12 Dec       TRUE     TRUE     TRUE     TRUE    TRUE
+
+The data for May 2017 do not pass the validation checks. We can extract
+this month and confirm that there are too many columns in the May 2017
+release. Once we have that confirmed, we can standardize that month and
+re-run our validation.
+
+``` r
+# extract data
+may2017 <- cs_extract_month(data2017, month = "May")
+
+# unit test column number
+expect_equal(ncol(may2017), 26)
+
+# remove object
+rm(may2017)
+
+# standardize months
+data2017 <- cs_standardize(data2017, month = "May", config = 26)
+
+# validate data
+cs_validate_year(data2017, year = "2017")
+```
+
+    ## # A tibble: 12 x 7
+    ##    month monthName oneMonth valMonth varCount valVars valClasses
+    ##    <dbl> <chr>     <lgl>    <lgl>    <lgl>    <lgl>   <lgl>     
+    ##  1     1 Jan       TRUE     TRUE     TRUE     TRUE    TRUE      
+    ##  2     2 Feb       TRUE     TRUE     TRUE     TRUE    TRUE      
+    ##  3     3 Mar       TRUE     TRUE     TRUE     TRUE    TRUE      
+    ##  4     4 Apr       TRUE     TRUE     TRUE     TRUE    TRUE      
+    ##  5     5 May       TRUE     TRUE     TRUE     TRUE    TRUE      
+    ##  6     6 Jun       TRUE     TRUE     TRUE     TRUE    TRUE      
+    ##  7     7 Jul       TRUE     TRUE     TRUE     TRUE    TRUE      
+    ##  8     8 Aug       TRUE     TRUE     TRUE     TRUE    TRUE      
+    ##  9     9 Sep       TRUE     TRUE     TRUE     TRUE    TRUE      
+    ## 10    10 Oct       TRUE     TRUE     TRUE     TRUE    TRUE      
+    ## 11    11 Nov       TRUE     TRUE     TRUE     TRUE    TRUE      
+    ## 12    12 Dec       TRUE     TRUE     TRUE     TRUE    TRUE
 
 ## Collapse Data
 
@@ -170,74 +250,82 @@ We start with 494 observations
 ``` r
 part1Crimes %>% 
   filter(xyCheck == TRUE) %>%
-  filter(ILEADSStreet != "UNKNOWN") %>%
-  mutate(fullAddress = paste0(ILEADSAddress, " ", ILEADSStreet, ", St. Louis, MO" )) -> missingXY
+  mutate(fullAddress = paste0(ILEADSAddress, " ", ILEADSStreet, ", St. Louis, MO" )) -> part1Crimes_miss
 
-nrow(missingXY)
+part1Crimes %>% 
+  filter(xyCheck == FALSE) -> part1Crimes_valid
+
+nrow(part1Crimes_miss)
 ```
 
-    ## [1] 429
+    ## [1] 494
 
 Removing the truly “unknown” addresses yields a set of 429 addresses
 that could potentially be geocoded.
 
 ``` r
-missingXY %>%
+part1Crimes_miss %>%
   tabyl(Description)
 ```
 
     ##                                     Description   n     percent
-    ##    AGG.ASSAULT-FIREARM/CITIZEN ADULT 1ST DEGREE   8 0.018648019
-    ##    AGG.ASSAULT-FIREARM/CITIZEN ADULT 3RD DEGREE   4 0.009324009
-    ##    AGG.ASSAULT-FIREARM/CITIZEN CHILD 1ST DEGREE   5 0.011655012
-    ##    AGG.ASSAULT-FIREARM/POLC.OFFICER  3RD DEGREE   1 0.002331002
-    ##  AGG.ASSAULT-HNDS,FST,FEET/CTZEN ADLT 2ND DEGRE   1 0.002331002
-    ##  AGG.ASSAULT-HNDS,FST,FEET/CTZEN ADLT 3RD DEGRE   1 0.002331002
-    ##      AGG.ASSAULT-KNIFE/CITIZEN ADULT 1ST DEGREE   1 0.002331002
-    ##     AGG.ASSAULT-KNIFE/POLICE OFFICER 3RD DEGREE   1 0.002331002
-    ##  AGG.ASSAULT-OTH DANG WEP/CTZEN ADLT 1ST DEGREE   2 0.004662005
-    ##  AGG.ASSAULT-OTH DANG WEP/CTZEN ADLT 2ND DEGREE   3 0.006993007
-    ##  AGG.ASSAULT-OTH DANG WEP/CTZEN ADLT 3RD DEGREE   4 0.009324009
-    ##                        ARSON-2ND DEGREE/SUCCESS   1 0.002331002
-    ##                 ARSON-KNOWINGLY BURNING/SUCCESS   2 0.004662005
-    ##         ASSLT-AGGRAV-FIREARM-1ST-ADULT-DOMESTIC   3 0.006993007
-    ##         ASSLT-AGGRAV-FIREARM-2ND-ADULT-DOMESTIC   1 0.002331002
-    ##         ASSLT-AGGRAV-FIREARM-3RD-ADULT-DOMESTIC   1 0.002331002
-    ##         ASSLT-AGGRAV-OTH-WPN-3RD-ADULT-DOMESTIC   2 0.004662005
-    ##         ASSLT-AGGRAV-OTH-WPN-3RD-CHILD-DOMESTIC   2 0.004662005
-    ##        ASSLT-AGGRV-HND/FST/FT-2ND-ADUL-DOMESTIC   2 0.004662005
-    ##        ASSLT-AGGRV-HND/FST/FT-3RD-ADUL-DOMESTIC   1 0.002331002
-    ##                   AUTO THEFT-PERM RETNT/ATTEMPT   2 0.004662005
-    ##                  AUTO THEFT-PERM RETNT/JOY RIDE  13 0.030303030
-    ##         AUTO THEFT-PERM RETNT/UNRECOV OVER 48HR   4 0.009324009
-    ##            AUTO THEFT-TRUCK/PERM RETNT/JOY RIDE   1 0.002331002
-    ##   AUTO THEFT-TRUCK/PERM RETNT/UNRECOV OVER 48HR   2 0.004662005
-    ##        BURGLARY-RESDNCE/UNK TIM/ATT FORCE ENTRY   2 0.004662005
-    ##    BURGLARY-RESDNCE/UNK TIM/FORC ENT/UNOCCUPIED   1 0.002331002
-    ##          BURGLARY-RESIDENCE/DAY/ATT FORCE ENTRY   2 0.004662005
-    ##     BURGLARY-RESIDENCE/DAY/FORCE ENT/UNOCCUPIED   1 0.002331002
-    ##       BURGLARY-RESIDENCE/DAY/UNLAW ENT/OCCUPIED   1 0.002331002
-    ##     BURGLARY-RESIDENCE/NIT/UNLAW ENT/UNOCCUPIED   1 0.002331002
-    ##                                        HOMICIDE   5 0.011655012
-    ##            LARC-ALL OTH/FRM PRSN/$500 - $24,999   1 0.002331002
-    ##             LARCENY-ALL OTH/FRM PRSN/UNDER $500   1 0.002331002
-    ##                LARCENY-ALL OTHER $500 - $24,999   6 0.013986014
-    ##                    LARCENY-ALL OTHER UNDER $500   3 0.006993007
-    ##                     LARCENY-BICYCLES UNDER $500   2 0.004662005
-    ##            LARCENY-FROM BUILDING $500 - $24,999   4 0.009324009
-    ##                LARCENY-FROM BUILDING UNDER $500   7 0.016317016
-    ##             LARCENY-FROM MTR VEH $500 - $24,999  13 0.030303030
-    ##                 LARCENY-FROM MTR VEH UNDER $500  11 0.025641026
-    ##                LARCENY-MTR VEH PARTS UNDER $500   3 0.006993007
-    ##                 LARCENY-SHOPLIFT $500 - $24,999   1 0.002331002
-    ##                     LARCENY-SHOPLIFT UNDER $500   1 0.002331002
-    ##                                RAPE -- FORCIBLE 253 0.589743590
-    ##      RAPE-ATTEMPT FORCIBLE RAPE/FORCIBLE INCEST  31 0.072261072
-    ##        ROBBERY-COMMERCE PL/FIREARM USED/SUCCESS   1 0.002331002
-    ##       ROBBERY-HIGHWAY  /FIREARM USED/SUCCESSFUL   4 0.009324009
-    ##       ROBBERY-HIGHWAY  /STRNGARM/INJURY/ATTEMPT   1 0.002331002
-    ##       ROBBERY-HIGHWAY  /STRNGARM/NO INJ/SUCCESS   4 0.009324009
-    ##       ROBBERY-HIGHWAY/OTHR WEPN USED/SUCCESSFUL   1 0.002331002
+    ##    AGG.ASSAULT-FIREARM/CITIZEN ADULT 1ST DEGREE  17 0.034412955
+    ##    AGG.ASSAULT-FIREARM/CITIZEN ADULT 3RD DEGREE   5 0.010121457
+    ##    AGG.ASSAULT-FIREARM/CITIZEN CHILD 1ST DEGREE   5 0.010121457
+    ##    AGG.ASSAULT-FIREARM/POLC.OFFICER  3RD DEGREE   1 0.002024291
+    ##  AGG.ASSAULT-HNDS,FST,FEET/CTZEN ADLT 2ND DEGRE   1 0.002024291
+    ##  AGG.ASSAULT-HNDS,FST,FEET/CTZEN ADLT 3RD DEGRE   1 0.002024291
+    ##  AGG.ASSAULT-HNDS,FST,FEET/CTZEN CHLD 1ST DEGRE   1 0.002024291
+    ##      AGG.ASSAULT-KNIFE/CITIZEN ADULT 1ST DEGREE   1 0.002024291
+    ##     AGG.ASSAULT-KNIFE/POLICE OFFICER 3RD DEGREE   1 0.002024291
+    ##  AGG.ASSAULT-OTH DANG WEP/CTZEN ADLT 1ST DEGREE   2 0.004048583
+    ##  AGG.ASSAULT-OTH DANG WEP/CTZEN ADLT 2ND DEGREE   3 0.006072874
+    ##  AGG.ASSAULT-OTH DANG WEP/CTZEN ADLT 3RD DEGREE   4 0.008097166
+    ##    AGG.ASSAULT-OTH DANG WEP/POL OFFC 3RD DEGREE   1 0.002024291
+    ##                        ARSON-2ND DEGREE/SUCCESS   1 0.002024291
+    ##                 ARSON-KNOWINGLY BURNING/SUCCESS   2 0.004048583
+    ##         ASSLT-AGGRAV-FIREARM-1ST-ADULT-DOMESTIC   3 0.006072874
+    ##         ASSLT-AGGRAV-FIREARM-2ND-ADULT-DOMESTIC   1 0.002024291
+    ##         ASSLT-AGGRAV-FIREARM-3RD-ADULT-DOMESTIC   1 0.002024291
+    ##         ASSLT-AGGRAV-OTH-WPN-2ND-CHILD-DOMESTIC   1 0.002024291
+    ##         ASSLT-AGGRAV-OTH-WPN-3RD-ADULT-DOMESTIC   2 0.004048583
+    ##         ASSLT-AGGRAV-OTH-WPN-3RD-CHILD-DOMESTIC   2 0.004048583
+    ##        ASSLT-AGGRV-HND/FST/FT-2ND-ADUL-DOMESTIC   2 0.004048583
+    ##        ASSLT-AGGRV-HND/FST/FT-3RD-ADUL-DOMESTIC   1 0.002024291
+    ##                   AUTO THEFT-PERM RETNT/ATTEMPT   2 0.004048583
+    ##                  AUTO THEFT-PERM RETNT/JOY RIDE  16 0.032388664
+    ##         AUTO THEFT-PERM RETNT/UNRECOV OVER 48HR   4 0.008097166
+    ##            AUTO THEFT-TRUCK/PERM RETNT/JOY RIDE   1 0.002024291
+    ##   AUTO THEFT-TRUCK/PERM RETNT/UNRECOV OVER 48HR   2 0.004048583
+    ##        BURGLARY-RESDNCE/UNK TIM/ATT FORCE ENTRY   2 0.004048583
+    ##    BURGLARY-RESDNCE/UNK TIM/FORC ENT/UNOCCUPIED   1 0.002024291
+    ##          BURGLARY-RESIDENCE/DAY/ATT FORCE ENTRY   2 0.004048583
+    ##     BURGLARY-RESIDENCE/DAY/FORCE ENT/UNOCCUPIED   1 0.002024291
+    ##       BURGLARY-RESIDENCE/DAY/UNLAW ENT/OCCUPIED   1 0.002024291
+    ##     BURGLARY-RESIDENCE/NIT/FORCE ENT/UNOCCUPIED   1 0.002024291
+    ##     BURGLARY-RESIDENCE/NIT/UNLAW ENT/UNOCCUPIED   2 0.004048583
+    ##                                        HOMICIDE   6 0.012145749
+    ##            LARC-ALL OTH/FRM PRSN/$500 - $24,999   1 0.002024291
+    ##             LARCENY-ALL OTH/FRM PRSN/UNDER $500   1 0.002024291
+    ##                LARCENY-ALL OTHER $500 - $24,999   7 0.014170040
+    ##                    LARCENY-ALL OTHER UNDER $500   6 0.012145749
+    ##                     LARCENY-BICYCLES UNDER $500   3 0.006072874
+    ##            LARCENY-FROM BUILDING $500 - $24,999   4 0.008097166
+    ##                LARCENY-FROM BUILDING UNDER $500  10 0.020242915
+    ##             LARCENY-FROM MTR VEH $500 - $24,999  17 0.034412955
+    ##                 LARCENY-FROM MTR VEH UNDER $500  22 0.044534413
+    ##                LARCENY-MTR VEH PARTS UNDER $500  15 0.030364372
+    ##                 LARCENY-SHOPLIFT $500 - $24,999   1 0.002024291
+    ##                     LARCENY-SHOPLIFT UNDER $500   1 0.002024291
+    ##                                RAPE -- FORCIBLE 262 0.530364372
+    ##      RAPE-ATTEMPT FORCIBLE RAPE/FORCIBLE INCEST  31 0.062753036
+    ##        ROBBERY-COMMERCE PL/FIREARM USED/SUCCESS   1 0.002024291
+    ##       ROBBERY-HIGHWAY       /KNIFE USED/ATTEMPT   1 0.002024291
+    ##       ROBBERY-HIGHWAY     /FIREARM USED/ATTEMPT   1 0.002024291
+    ##       ROBBERY-HIGHWAY  /FIREARM USED/SUCCESSFUL   4 0.008097166
+    ##       ROBBERY-HIGHWAY  /STRNGARM/INJURY/ATTEMPT   1 0.002024291
+    ##       ROBBERY-HIGHWAY  /STRNGARM/NO INJ/SUCCESS   4 0.008097166
+    ##       ROBBERY-HIGHWAY/OTHR WEPN USED/SUCCESSFUL   1 0.002024291
 
 Rape incidents comprise almost 66% of these incidents that cannot be
 located.
@@ -245,3 +333,17 @@ located.
 ``` r
 source(here("source", "geocodeCrimes.R"))
 ```
+
+## Project Both Sets of Data
+
+  - need to filter out prior crimes
+  - need to pull in data from 2017 / 2018 and search for 2016
+crimes
+
+<!-- end list -->
+
+``` r
+x <- st_as_sf(part1Crimes_valid, coords = c("XCoord", "YCoord"), crs = 102696)
+```
+
+## Export Data

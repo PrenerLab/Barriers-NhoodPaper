@@ -28,6 +28,7 @@ library(sf)
 # other packages
 library(janitor)       # frequency tables
 library(here)          # file path management
+library(testthat)      # unit testing
 ```
 
 ## Create Data
@@ -37,39 +38,64 @@ Data downloaded from the STLMPD website come in `.csv` format but with the wrong
 # change working directory
 cd ..
 
-# create csv folder
-mkdir data/raw/stlmpd/csv
-
-# copy html files new directory for csv
-cp -r data/raw/stlmpd/html/* data/raw/stlmpd/csv
-
-# change file extensions
-for file in data/raw/stlmpd/csv/*.html
-do
-  mv "$file" "${file%%.*}.${file##*.}"
-done
-
-for file in data/raw/stlmpd/csv/*.html
-do
-  mv "$file" "${file%.html}.csv"
-done
+# execute cleaning script
+bash source/reformatHTML.sh
 ```
 
 ## Load Data
-With our data renamed, we build a year list object for 2016 crimes:
+With our data renamed, we build a year list objects for 2016, 2017, and 2017 crimes:
 
 ```{r load-data}
-data2016 <- cs_load_year(here("data", "raw", "stlmpd", "csv"))
+data2016 <- cs_load_year(here("data", "raw", "stlmpd", "csv", "2016"))
+data2017 <- cs_load_year(here("data", "raw", "stlmpd", "csv", "2017"))
+data2018 <- cs_load_year(here("data", "raw", "stlmpd", "csv", "2018"))
 ```
 
 ## Validate Data
 Next we make sure there are no problems with the crime files in terms of incongruent columns:
 
-```{r validate-data}
+```{r validate-data16}
 cs_validate_year(data2016, year = "2016")
 ```
 
 All of the data passes the validation checks.
+
+```{r validate-data17}
+cs_validate_year(data2017, year = "2017")
+```
+
+We can use the `verbose = TRUE` option on `cs_validate_year()` to identify areas where the validation checks have failed:
+
+```{r validate-data17}
+cs_validate_year(data2017, year = "2017", verbose = TRUE)
+```
+
+The data for May 2017 do not pass the validation checks. We can extract this month and confirm that there are too many columns in the May 2017 release. Once we have that confirmed, we can standardize that month and re-run our validation.
+
+```{r fix-may-cols}
+# extract data
+may2017 <- cs_extract_month(data2017, month = "May")
+
+# unit test column number
+expect_equal(ncol(may2017), 26)
+
+# remove object
+rm(may2017)
+
+# standardize months
+data2017 <- cs_standardize(data2017, month = "May", config = 26)
+
+# validate data
+cs_validate_year(data2017, year = "2017")
+```
+
+We now get a `TRUE` value for `cs_validate_year()` and can move on to 2018 data.
+
+```{r validate-data18}
+cs_validate_year(data2018, year = "2018")
+```
+
+
 
 ## Collapse Data
 With the data validated, we collapse it into a single, flat object:
@@ -144,7 +170,7 @@ source(here("source", "geocodeCrimes.R"))
 - need to pull in data from 2017 / 2018 and search for 2016 crimes
 
 ```{r project-valid}
-x <- st_as_sf(part1Crimes_valid, coords = c("XCoord", "YCoord"), crs = 32615)
+x <- st_as_sf(part1Crimes_valid, coords = c("XCoord", "YCoord"), crs = 102696)
 ```
 
 
