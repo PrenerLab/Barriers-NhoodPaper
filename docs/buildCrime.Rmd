@@ -19,11 +19,13 @@ library(compstatr)     # work with stlmpd crime data
 
 # tidyverse packages
 library(dplyr)         # data wrangling
+library(lubridate)     # date time tools
+library(readr)         # working with csv data
 
 # spatial packages
 library(gateway)       # work with st. louis spatial data
 library(ggmap)         # batch geocoding
-library(sf)
+library(sf)            # working with spatial
 
 # other packages
 library(janitor)       # frequency tables
@@ -43,13 +45,15 @@ bash source/reformatHTML.sh
 ```
 
 ## Load Data
-With our data renamed, we build a year list objects for 2016, 2017, and 2017 crimes:
+With our data renamed, we build a year list objects for 2016, 2017, and 2018 crimes:
 
 ```{r load-data}
 data2016 <- cs_load_year(here("data", "raw", "stlmpd", "csv", "2016"))
 data2017 <- cs_load_year(here("data", "raw", "stlmpd", "csv", "2017"))
 data2018 <- cs_load_year(here("data", "raw", "stlmpd", "csv", "2018"))
 ```
+
+We can visually verify that the 2018 folder is the one causing the warning here, and that we have the maximum number of files we can work from.
 
 ## Validate Data
 Next we make sure there are no problems with the crime files in terms of incongruent columns:
@@ -66,7 +70,7 @@ cs_validate_year(data2017, year = "2017")
 
 We can use the `verbose = TRUE` option on `cs_validate_year()` to identify areas where the validation checks have failed:
 
-```{r validate-data17}
+```{r validate-data17-v}
 cs_validate_year(data2017, year = "2017", verbose = TRUE)
 ```
 
@@ -95,40 +99,40 @@ We now get a `TRUE` value for `cs_validate_year()` and can move on to 2018 data.
 cs_validate_year(data2018, year = "2018")
 ```
 
-
-
 ## Collapse Data
-With the data validated, we collapse it into a single, flat object:
+With the data validated, we collapse each year into a single, flat object:
 
 ```{r collapse-data}
 data2016_flat <- cs_collapse(data2016)
+data2017_flat <- cs_collapse(data2017)
+data2018_flat <- cs_collapse(data2018)
+```
+
+What we need for this project is a single object with only the crimes for 2016. Since crimes were *reported* in both the 2017 and 2018 flattened for 2016, we need to merge all three tables and then retain only the 2016 crimes. The `cs_combine()` function will do this, and return only the known crimes for 2016:
+
+```{r combine-data}
+crimes2016 <- cs_combine(type = "year", date = 2016, data2016_flat, data2017_flat, data2018_flat)
+```
+
+### Clean-up Enviornment
+With our data created, we can remove some of the intermediary objects we've created:
+
+```{r rm-initial-objects}
+rm(data2016, data2016_flat, data2017, data2017_flat, data2018, data2018_flat)
 ```
 
 ## Remove Unfounded Crimes and Subset Based on Type of Crime:
-The following code chunk removes unfounded crimes (those where `Count == -1`) and then creates two data frames, one for violent crimes and one for all part one crimes:
+The following code chunk removes unfounded crimes (those where `Count == -1`) and then creates a data frame for all part one crimes:
 
 ```{r subset-data}
-# violent crimes
-data2016_flat %>% 
+crimes2016 %>% 
   cs_filter_count(var = Count) %>%
-  cs_filter_crime(var = Crime, crime = "Violent") -> violentCrimes
-
-# part 1 crimes
-data2016_flat %>% 
-  cs_filter_count(var = Count) %>%
+  filter(ILEADSStreet != "UNKNOWN") %>%
   cs_filter_crime(var = Crime, crime = "Part 1") -> part1Crimes
 ```
 
 ## Check for and Address Missing Spatial Data
 Before proceeding, we'll check for missing spatial data.
-
-```{r check-xy-violent}
-violentCrimes <- cs_missing_xy(violentCrimes, varx = XCoord, vary = YCoord, newVar = xyCheck)
-
-table(violentCrimes$xyCheck)
-```
-
-About 6% of the violent crimes are missing spatial data.
 
 ```{r check-xy-p1}
 part1Crimes <- cs_missing_xy(part1Crimes, varx = XCoord, vary = YCoord, newVar = xyCheck)
@@ -138,55 +142,90 @@ table(part1Crimes$xyCheck)
 
 About 2% of the part 1 crimes are missing spatial data. Since these have the same root data, we'll pull out those observations that are missing spatial data and attempt to geocode them with the Google Maps API. 
 
-We start with 494 observations
+```{r unit-test-missingXY}
+expect_equal(as.integer(table(part1Crimes$xyCheck)[2]), 422)
+```
 
-```{r geocode}
+We start with 422 observations. We'll concatenate a street address to produce something we can run through Google's API using `ggmap::mutate_geocode()` for those that need geocoding and separate out the already geocoded data:
+
+```{r geocode-setup}
+# subset out missing spatial data
 part1Crimes %>% 
   filter(xyCheck == TRUE) %>%
   mutate(fullAddress = paste0(ILEADSAddress, " ", ILEADSStreet, ", St. Louis, MO" )) -> part1Crimes_miss
 
+# subset out valid spatial data
 part1Crimes %>% 
   filter(xyCheck == FALSE) -> part1Crimes_valid
 
-nrow(part1Crimes_miss)
+# logic check that we remain with 422 missing spatial data points
+expect_equal(as.integer(table(part1Crimes_miss$xyCheck)[1]), 422)
 ```
 
-Removing the truly "unknown" addresses yields a set of 429 addresses that could potentially be geocoded.
+These are still 422 observations. These observations are not a representative slice of crimes in St. Louis. They are overwhelmginly drawn from rapes, larcenies, and aggrevated assault.
 
 ```{r tabulate-missinXY}
 part1Crimes_miss %>%
-  tabyl(Description)
+  cs_crime_cat(var = Crime, newVar = crimeCat, output = "string") %>%
+  tabyl(crimeCat)
 ```
 
-Rape incidents comprise almost 66% of these incidents that cannot be located.
+Rape incidents comprise almost 64% of these incidents that cannot be located.
+
+The geocoding code chunk is powered by a script `source/geocodeCrimes.R`, which is not automatically executed when this notebook is knit. We use logic checks above to ensure that the sample size fed into `geocodeCrimes.R` is consistent. This code chunk will not be executed automatically given the resources it requires.
 
 ```{r geocode-missingXY, eval=FALSE}
 source(here("source", "geocodeCrimes.R"))
 ```
 
-## Project Both Sets of Data
+The results of the geocoding are that 56 of the 422 observations are geocoded; 366 remain not geocoded. 
 
-- need to filter out prior crimes
-- need to pull in data from 2017 / 2018 and search for 2016 crimes
+The geocoded data are saved in an `intermediate/` subdirectory so that they can be loaded back in when the notebook is knit.
+
+### Clean-up Enviornment Again
+At this point, we have a number of objects that we no longer need. Some are only produced by the geocoding process, and thus this code chunk, like the last, needs to be executed manually:
+
+```{r post-geocode-cleanup, eval=FALSE}
+rm(part1Crimes_fail)
+rm(part1Crimes_success)
+```
+
+Some are produced each iteration and can be cleaned automatically:
+
+```{r post-geocode-cleanup2}
+rm(crimes2016)
+rm(part1Crimes)
+```
+
+## Project Both Sets of Data
+First, we project the main set of previously geocoded data, remove excess columns, and transform the data to NAD 1983:
 
 ```{r project-valid}
-x <- st_as_sf(part1Crimes_valid, coords = c("XCoord", "YCoord"), crs = 102696)
+valid <- st_as_sf(part1Crimes_valid, coords = c("XCoord", "YCoord"), crs = 102696)
+
+valid %>%
+  select(-xyCheck) %>%
+  st_transform(crs = 4269) -> valid
 ```
 
+Second, we project the geocoded data after loading it from the previously saved `.csv` file and remove excecess columns:
 
 ```{r project-geocoded}
+part1Crimes_success <- read_csv(file = here("data", "raw", "stlmpd", "intermediate", "missingXY_success.csv"))
+success <- st_as_sf(part1Crimes_success, coords = c("lon", "lat"), crs = 4269)
 
+success <- select(success, -XCoord, -YCoord, -xyCheck, -fullAddress)
 ```
 
+Finally, we bind the two objects together:
 
 ```{r combine-sf-objects}
-
+combined <- rbind(valid, success)
 ```
 
 ## Export Data
-
+With the data bound together, we write it to the `data/clean/` directory:
 
 ```{r export-data}
-
+st_write(combined, dsn = here("data", "clean", "crimes2016.shp"), delete_layer = TRUE)
 ```
-

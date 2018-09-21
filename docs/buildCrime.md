@@ -1,7 +1,7 @@
 Build Crime Data Set
 ================
 Christopher Prener, Ph.D.
-(September 16, 2018)
+(September 21, 2018)
 
 ## Introduction
 
@@ -31,6 +31,19 @@ library(dplyr)         # data wrangling
     ##     intersect, setdiff, setequal, union
 
 ``` r
+library(lubridate)     # date time tools
+```
+
+    ## 
+    ## Attaching package: 'lubridate'
+
+    ## The following object is masked from 'package:base':
+    ## 
+    ##     date
+
+``` r
+library(readr)         # working with csv data
+
 # spatial packages
 library(gateway)       # work with st. louis spatial data
 library(ggmap)         # batch geocoding
@@ -39,7 +52,7 @@ library(ggmap)         # batch geocoding
     ## Loading required package: ggplot2
 
 ``` r
-library(sf)
+library(sf)            # working with spatial
 ```
 
     ## Linking to GEOS 3.6.1, GDAL 2.1.3, proj.4 4.9.3
@@ -51,6 +64,13 @@ library(here)          # file path management
 ```
 
     ## here() starts at /Users/chris/GitHub/Lab/Barriers-NhoodPaper
+
+    ## 
+    ## Attaching package: 'here'
+
+    ## The following object is masked from 'package:lubridate':
+    ## 
+    ##     here
 
 ``` r
 library(testthat)      # unit testing
@@ -84,13 +104,21 @@ bash source/reformatHTML.sh
 ## Load Data
 
 With our data renamed, we build a year list objects for 2016, 2017, and
-2017 crimes:
+2018 crimes:
 
 ``` r
 data2016 <- cs_load_year(here("data", "raw", "stlmpd", "csv", "2016"))
 data2017 <- cs_load_year(here("data", "raw", "stlmpd", "csv", "2017"))
 data2018 <- cs_load_year(here("data", "raw", "stlmpd", "csv", "2018"))
 ```
+
+    ## Warning in cs_load_year(here("data", "raw", "stlmpd", "csv", "2018")):
+    ## There are fewer than 12 files in the specified folder. You are only loading
+    ## a partial year.
+
+We can visually verify that the 2018 folder is the one causing the
+warning here, and that we have the maximum number of files we can work
+from.
 
 ## Validate Data
 
@@ -101,53 +129,39 @@ incongruent columns:
 cs_validate_year(data2016, year = "2016")
 ```
 
-    ## # A tibble: 12 x 7
-    ##    month monthName oneMonth valMonth varCount valVars valClasses
-    ##    <dbl> <chr>     <lgl>    <lgl>    <lgl>    <lgl>   <lgl>     
-    ##  1     1 Jan       TRUE     TRUE     TRUE     TRUE    TRUE      
-    ##  2     2 Feb       TRUE     TRUE     TRUE     TRUE    TRUE      
-    ##  3     3 Mar       TRUE     TRUE     TRUE     TRUE    TRUE      
-    ##  4     4 Apr       TRUE     TRUE     TRUE     TRUE    TRUE      
-    ##  5     5 May       TRUE     TRUE     TRUE     TRUE    TRUE      
-    ##  6     6 Jun       TRUE     TRUE     TRUE     TRUE    TRUE      
-    ##  7     7 Jul       TRUE     TRUE     TRUE     TRUE    TRUE      
-    ##  8     8 Aug       TRUE     TRUE     TRUE     TRUE    TRUE      
-    ##  9     9 Sep       TRUE     TRUE     TRUE     TRUE    TRUE      
-    ## 10    10 Oct       TRUE     TRUE     TRUE     TRUE    TRUE      
-    ## 11    11 Nov       TRUE     TRUE     TRUE     TRUE    TRUE      
-    ## 12    12 Dec       TRUE     TRUE     TRUE     TRUE    TRUE
+    ## [1] TRUE
 
-All of the data passes the validation
-    checks.
+All of the data passes the validation checks.
 
 ``` r
 cs_validate_year(data2017, year = "2017")
 ```
 
-    ## Warning in cs_validate_year(data2017, year = "2017"): Validation warning -
-    ## not all data tables contain the expected 20 variables.
+    ## [1] FALSE
 
-    ## Warning in cs_validate_year(data2017, year = "2017"): Validation warning -
-    ## not all data tables contain the expected variable names.
+We can use the `verbose = TRUE` option on `cs_validate_year()` to
+identify areas where the validation checks have failed:
 
-    ## Warning in cs_validate_year(data2017, year = "2017"): Validation warning -
-    ## not all data tables contain the expected variable classes.
+``` r
+cs_validate_year(data2017, year = "2017", verbose = TRUE)
+```
 
-    ## # A tibble: 12 x 7
-    ##    month monthName oneMonth valMonth varCount valVars valClasses
-    ##    <dbl> <chr>     <lgl>    <lgl>    <lgl>    <lgl>   <lgl>     
-    ##  1     1 Jan       TRUE     TRUE     TRUE     TRUE    TRUE      
-    ##  2     2 Feb       TRUE     TRUE     TRUE     TRUE    TRUE      
-    ##  3     3 Mar       TRUE     TRUE     TRUE     TRUE    TRUE      
-    ##  4     4 Apr       TRUE     TRUE     TRUE     TRUE    TRUE      
-    ##  5     5 May       TRUE     TRUE     FALSE    NA      NA        
-    ##  6     6 Jun       TRUE     TRUE     TRUE     TRUE    TRUE      
-    ##  7     7 Jul       TRUE     TRUE     TRUE     TRUE    TRUE      
-    ##  8     8 Aug       TRUE     TRUE     TRUE     TRUE    TRUE      
-    ##  9     9 Sep       TRUE     TRUE     TRUE     TRUE    TRUE      
-    ## 10    10 Oct       TRUE     TRUE     TRUE     TRUE    TRUE      
-    ## 11    11 Nov       TRUE     TRUE     TRUE     TRUE    TRUE      
-    ## 12    12 Dec       TRUE     TRUE     TRUE     TRUE    TRUE
+    ## # A tibble: 12 x 9
+    ##    namedMonth codedMonth valMonth codedYear valYear oneMonth varCount
+    ##    <chr>      <chr>      <lgl>        <int> <lgl>   <lgl>    <lgl>   
+    ##  1 January    January    TRUE          2017 TRUE    TRUE     TRUE    
+    ##  2 February   February   TRUE          2017 TRUE    TRUE     TRUE    
+    ##  3 March      March      TRUE          2017 TRUE    TRUE     TRUE    
+    ##  4 April      April      TRUE          2017 TRUE    TRUE     TRUE    
+    ##  5 May        May        TRUE          2017 TRUE    TRUE     FALSE   
+    ##  6 June       June       TRUE          2017 TRUE    TRUE     TRUE    
+    ##  7 July       July       TRUE          2017 TRUE    TRUE     TRUE    
+    ##  8 August     August     TRUE          2017 TRUE    TRUE     TRUE    
+    ##  9 September  September  TRUE          2017 TRUE    TRUE     TRUE    
+    ## 10 October    October    TRUE          2017 TRUE    TRUE     TRUE    
+    ## 11 November   November   TRUE          2017 TRUE    TRUE     TRUE    
+    ## 12 December   December   TRUE          2017 TRUE    TRUE     TRUE    
+    ## # ... with 2 more variables: valVars <lgl>, valClasses <lgl>
 
 The data for May 2017 do not pass the validation checks. We can extract
 this month and confirm that there are too many columns in the May 2017
@@ -171,64 +185,64 @@ data2017 <- cs_standardize(data2017, month = "May", config = 26)
 cs_validate_year(data2017, year = "2017")
 ```
 
-    ## # A tibble: 12 x 7
-    ##    month monthName oneMonth valMonth varCount valVars valClasses
-    ##    <dbl> <chr>     <lgl>    <lgl>    <lgl>    <lgl>   <lgl>     
-    ##  1     1 Jan       TRUE     TRUE     TRUE     TRUE    TRUE      
-    ##  2     2 Feb       TRUE     TRUE     TRUE     TRUE    TRUE      
-    ##  3     3 Mar       TRUE     TRUE     TRUE     TRUE    TRUE      
-    ##  4     4 Apr       TRUE     TRUE     TRUE     TRUE    TRUE      
-    ##  5     5 May       TRUE     TRUE     TRUE     TRUE    TRUE      
-    ##  6     6 Jun       TRUE     TRUE     TRUE     TRUE    TRUE      
-    ##  7     7 Jul       TRUE     TRUE     TRUE     TRUE    TRUE      
-    ##  8     8 Aug       TRUE     TRUE     TRUE     TRUE    TRUE      
-    ##  9     9 Sep       TRUE     TRUE     TRUE     TRUE    TRUE      
-    ## 10    10 Oct       TRUE     TRUE     TRUE     TRUE    TRUE      
-    ## 11    11 Nov       TRUE     TRUE     TRUE     TRUE    TRUE      
-    ## 12    12 Dec       TRUE     TRUE     TRUE     TRUE    TRUE
+    ## [1] TRUE
+
+We now get a `TRUE` value for `cs_validate_year()` and can move on to
+2018 data.
+
+``` r
+cs_validate_year(data2018, year = "2018")
+```
+
+    ## [1] TRUE
 
 ## Collapse Data
 
-With the data validated, we collapse it into a single, flat object:
+With the data validated, we collapse each year into a single, flat
+object:
 
 ``` r
 data2016_flat <- cs_collapse(data2016)
+data2017_flat <- cs_collapse(data2017)
+data2018_flat <- cs_collapse(data2018)
+```
+
+What we need for this project is a single object with only the crimes
+for 2016. Since crimes were *reported* in both the 2017 and 2018
+flattened for 2016, we need to merge all three tables and then retain
+only the 2016 crimes. The `cs_combine()` function will do this, and
+return only the known crimes for
+2016:
+
+``` r
+crimes2016 <- cs_combine(type = "year", date = 2016, data2016_flat, data2017_flat, data2018_flat)
+```
+
+### Clean-up Enviornment
+
+With our data created, we can remove some of the intermediary objects
+we’ve
+created:
+
+``` r
+rm(data2016, data2016_flat, data2017, data2017_flat, data2018, data2018_flat)
 ```
 
 ## Remove Unfounded Crimes and Subset Based on Type of Crime:
 
 The following code chunk removes unfounded crimes (those where `Count ==
--1`) and then creates two data frames, one for violent crimes and one
-for all part one crimes:
+-1`) and then creates a data frame for all part one crimes:
 
 ``` r
-# violent crimes
-data2016_flat %>% 
+crimes2016 %>% 
   cs_filter_count(var = Count) %>%
-  cs_filter_crime(var = Crime, crime = "Violent") -> violentCrimes
-
-# part 1 crimes
-data2016_flat %>% 
-  cs_filter_count(var = Count) %>%
+  filter(ILEADSStreet != "UNKNOWN") %>%
   cs_filter_crime(var = Crime, crime = "Part 1") -> part1Crimes
 ```
 
 ## Check for and Address Missing Spatial Data
 
 Before proceeding, we’ll check for missing spatial
-data.
-
-``` r
-violentCrimes <- cs_missing_xy(violentCrimes, varx = XCoord, vary = YCoord, newVar = xyCheck)
-
-table(violentCrimes$xyCheck)
-```
-
-    ## 
-    ## FALSE  TRUE 
-    ##  5742   368
-
-About 6% of the violent crimes are missing spatial
 data.
 
 ``` r
@@ -239,111 +253,158 @@ table(part1Crimes$xyCheck)
 
     ## 
     ## FALSE  TRUE 
-    ## 24998   494
+    ## 24951   422
 
 About 2% of the part 1 crimes are missing spatial data. Since these have
 the same root data, we’ll pull out those observations that are missing
 spatial data and attempt to geocode them with the Google Maps API.
 
-We start with 494 observations
+``` r
+expect_equal(as.integer(table(part1Crimes$xyCheck)[2]), 422)
+```
+
+We start with 422 observations. We’ll concatenate a street address to
+produce something we can run through Google’s API using
+`ggmap::mutate_geocode()` for those that need geocoding and separate out
+the already geocoded data:
 
 ``` r
+# subset out missing spatial data
 part1Crimes %>% 
   filter(xyCheck == TRUE) %>%
   mutate(fullAddress = paste0(ILEADSAddress, " ", ILEADSStreet, ", St. Louis, MO" )) -> part1Crimes_miss
 
+# subset out valid spatial data
 part1Crimes %>% 
   filter(xyCheck == FALSE) -> part1Crimes_valid
 
-nrow(part1Crimes_miss)
+# logic check that we remain with 422 missing spatial data points
+expect_equal(as.integer(table(part1Crimes_miss$xyCheck)[1]), 422)
 ```
 
-    ## [1] 494
-
-Removing the truly “unknown” addresses yields a set of 429 addresses
-that could potentially be geocoded.
+These are still 422 observations. These observations are not a
+representative slice of crimes in St. Louis. They are overwhelmginly
+drawn from rapes, larcenies, and aggrevated assault.
 
 ``` r
 part1Crimes_miss %>%
-  tabyl(Description)
+  cs_crime_cat(var = Crime, newVar = crimeCat, output = "string") %>%
+  tabyl(crimeCat)
 ```
 
-    ##                                     Description   n     percent
-    ##    AGG.ASSAULT-FIREARM/CITIZEN ADULT 1ST DEGREE  17 0.034412955
-    ##    AGG.ASSAULT-FIREARM/CITIZEN ADULT 3RD DEGREE   5 0.010121457
-    ##    AGG.ASSAULT-FIREARM/CITIZEN CHILD 1ST DEGREE   5 0.010121457
-    ##    AGG.ASSAULT-FIREARM/POLC.OFFICER  3RD DEGREE   1 0.002024291
-    ##  AGG.ASSAULT-HNDS,FST,FEET/CTZEN ADLT 2ND DEGRE   1 0.002024291
-    ##  AGG.ASSAULT-HNDS,FST,FEET/CTZEN ADLT 3RD DEGRE   1 0.002024291
-    ##  AGG.ASSAULT-HNDS,FST,FEET/CTZEN CHLD 1ST DEGRE   1 0.002024291
-    ##      AGG.ASSAULT-KNIFE/CITIZEN ADULT 1ST DEGREE   1 0.002024291
-    ##     AGG.ASSAULT-KNIFE/POLICE OFFICER 3RD DEGREE   1 0.002024291
-    ##  AGG.ASSAULT-OTH DANG WEP/CTZEN ADLT 1ST DEGREE   2 0.004048583
-    ##  AGG.ASSAULT-OTH DANG WEP/CTZEN ADLT 2ND DEGREE   3 0.006072874
-    ##  AGG.ASSAULT-OTH DANG WEP/CTZEN ADLT 3RD DEGREE   4 0.008097166
-    ##    AGG.ASSAULT-OTH DANG WEP/POL OFFC 3RD DEGREE   1 0.002024291
-    ##                        ARSON-2ND DEGREE/SUCCESS   1 0.002024291
-    ##                 ARSON-KNOWINGLY BURNING/SUCCESS   2 0.004048583
-    ##         ASSLT-AGGRAV-FIREARM-1ST-ADULT-DOMESTIC   3 0.006072874
-    ##         ASSLT-AGGRAV-FIREARM-2ND-ADULT-DOMESTIC   1 0.002024291
-    ##         ASSLT-AGGRAV-FIREARM-3RD-ADULT-DOMESTIC   1 0.002024291
-    ##         ASSLT-AGGRAV-OTH-WPN-2ND-CHILD-DOMESTIC   1 0.002024291
-    ##         ASSLT-AGGRAV-OTH-WPN-3RD-ADULT-DOMESTIC   2 0.004048583
-    ##         ASSLT-AGGRAV-OTH-WPN-3RD-CHILD-DOMESTIC   2 0.004048583
-    ##        ASSLT-AGGRV-HND/FST/FT-2ND-ADUL-DOMESTIC   2 0.004048583
-    ##        ASSLT-AGGRV-HND/FST/FT-3RD-ADUL-DOMESTIC   1 0.002024291
-    ##                   AUTO THEFT-PERM RETNT/ATTEMPT   2 0.004048583
-    ##                  AUTO THEFT-PERM RETNT/JOY RIDE  16 0.032388664
-    ##         AUTO THEFT-PERM RETNT/UNRECOV OVER 48HR   4 0.008097166
-    ##            AUTO THEFT-TRUCK/PERM RETNT/JOY RIDE   1 0.002024291
-    ##   AUTO THEFT-TRUCK/PERM RETNT/UNRECOV OVER 48HR   2 0.004048583
-    ##        BURGLARY-RESDNCE/UNK TIM/ATT FORCE ENTRY   2 0.004048583
-    ##    BURGLARY-RESDNCE/UNK TIM/FORC ENT/UNOCCUPIED   1 0.002024291
-    ##          BURGLARY-RESIDENCE/DAY/ATT FORCE ENTRY   2 0.004048583
-    ##     BURGLARY-RESIDENCE/DAY/FORCE ENT/UNOCCUPIED   1 0.002024291
-    ##       BURGLARY-RESIDENCE/DAY/UNLAW ENT/OCCUPIED   1 0.002024291
-    ##     BURGLARY-RESIDENCE/NIT/FORCE ENT/UNOCCUPIED   1 0.002024291
-    ##     BURGLARY-RESIDENCE/NIT/UNLAW ENT/UNOCCUPIED   2 0.004048583
-    ##                                        HOMICIDE   6 0.012145749
-    ##            LARC-ALL OTH/FRM PRSN/$500 - $24,999   1 0.002024291
-    ##             LARCENY-ALL OTH/FRM PRSN/UNDER $500   1 0.002024291
-    ##                LARCENY-ALL OTHER $500 - $24,999   7 0.014170040
-    ##                    LARCENY-ALL OTHER UNDER $500   6 0.012145749
-    ##                     LARCENY-BICYCLES UNDER $500   3 0.006072874
-    ##            LARCENY-FROM BUILDING $500 - $24,999   4 0.008097166
-    ##                LARCENY-FROM BUILDING UNDER $500  10 0.020242915
-    ##             LARCENY-FROM MTR VEH $500 - $24,999  17 0.034412955
-    ##                 LARCENY-FROM MTR VEH UNDER $500  22 0.044534413
-    ##                LARCENY-MTR VEH PARTS UNDER $500  15 0.030364372
-    ##                 LARCENY-SHOPLIFT $500 - $24,999   1 0.002024291
-    ##                     LARCENY-SHOPLIFT UNDER $500   1 0.002024291
-    ##                                RAPE -- FORCIBLE 262 0.530364372
-    ##      RAPE-ATTEMPT FORCIBLE RAPE/FORCIBLE INCEST  31 0.062753036
-    ##        ROBBERY-COMMERCE PL/FIREARM USED/SUCCESS   1 0.002024291
-    ##       ROBBERY-HIGHWAY       /KNIFE USED/ATTEMPT   1 0.002024291
-    ##       ROBBERY-HIGHWAY     /FIREARM USED/ATTEMPT   1 0.002024291
-    ##       ROBBERY-HIGHWAY  /FIREARM USED/SUCCESSFUL   4 0.008097166
-    ##       ROBBERY-HIGHWAY  /STRNGARM/INJURY/ATTEMPT   1 0.002024291
-    ##       ROBBERY-HIGHWAY  /STRNGARM/NO INJ/SUCCESS   4 0.008097166
-    ##       ROBBERY-HIGHWAY/OTHR WEPN USED/SUCCESSFUL   1 0.002024291
+    ##             crimeCat   n     percent
+    ##   Aggravated Assault  46 0.109004739
+    ##                Arson   3 0.007109005
+    ##             Burgalry   8 0.018957346
+    ##        Forcible Rape 270 0.639810427
+    ##             Homicide   8 0.018957346
+    ##              Larceny  56 0.132701422
+    ##  Motor Vehicle Theft  21 0.049763033
+    ##              Robbery  10 0.023696682
 
-Rape incidents comprise almost 66% of these incidents that cannot be
+Rape incidents comprise almost 64% of these incidents that cannot be
 located.
+
+The geocoding code chunk is powered by a script
+`source/geocodeCrimes.R`, which is not automatically executed when this
+notebook is knit. We use logic checks above to ensure that the sample
+size fed into `geocodeCrimes.R` is consistent. This code chunk will not
+be executed automatically given the resources it requires.
 
 ``` r
 source(here("source", "geocodeCrimes.R"))
 ```
 
-## Project Both Sets of Data
+The results of the geocoding are that 56 of the 422 observations are
+geocoded; 366 remain not geocoded.
 
-  - need to filter out prior crimes
-  - need to pull in data from 2017 / 2018 and search for 2016
-crimes
+The geocoded data are saved in an `intermediate/` subdirectory so that
+they can be loaded back in when the notebook is knit.
 
-<!-- end list -->
+### Clean-up Enviornment Again
+
+At this point, we have a number of objects that we no longer need. Some
+are only produced by the geocoding process, and thus this code chunk,
+like the last, needs to be executed manually:
 
 ``` r
-x <- st_as_sf(part1Crimes_valid, coords = c("XCoord", "YCoord"), crs = 102696)
+rm(part1Crimes_fail)
+rm(part1Crimes_success)
+```
+
+Some are produced each iteration and can be cleaned automatically:
+
+``` r
+rm(crimes2016)
+rm(part1Crimes)
+```
+
+## Project Both Sets of Data
+
+First, we project the main set of previously geocoded data, remove
+excess columns, and transform the data to NAD
+1983:
+
+``` r
+valid <- st_as_sf(part1Crimes_valid, coords = c("XCoord", "YCoord"), crs = 102696)
+
+valid %>%
+  select(-xyCheck) %>%
+  st_transform(crs = 4269) -> valid
+```
+
+Second, we project the geocoded data after loading it from the
+previously saved `.csv` file and remove excecess
+columns:
+
+``` r
+part1Crimes_success <- read_csv(file = here("data", "raw", "stlmpd", "intermediate", "missingXY_success.csv"))
+```
+
+    ## Parsed with column specification:
+    ## cols(
+    ##   .default = col_character(),
+    ##   Count = col_integer(),
+    ##   Crime = col_integer(),
+    ##   District = col_integer(),
+    ##   ILEADSAddress = col_integer(),
+    ##   Neighborhood = col_integer(),
+    ##   CADAddress = col_integer(),
+    ##   XCoord = col_integer(),
+    ##   YCoord = col_integer(),
+    ##   xyCheck = col_logical(),
+    ##   lon = col_double(),
+    ##   lat = col_double()
+    ## )
+
+    ## See spec(...) for full column specifications.
+
+``` r
+success <- st_as_sf(part1Crimes_success, coords = c("lon", "lat"), crs = 4269)
+
+success <- select(success, -XCoord, -YCoord, -xyCheck, -fullAddress)
+```
+
+Finally, we bind the two objects together:
+
+``` r
+combined <- rbind(valid, success)
 ```
 
 ## Export Data
+
+With the data bound together, we write it to the `data/clean/`
+directory:
+
+``` r
+st_write(combined, dsn = here("data", "clean", "crimes2016.shp"), delete_layer = TRUE)
+```
+
+    ## Warning in abbreviate_shapefile_names(obj): Field names abbreviated for
+    ## ESRI Shapefile driver
+
+    ## Deleting layer `crimes2016' using driver `ESRI Shapefile'
+    ## Writing layer `crimes2016' to data source `/Users/chris/GitHub/Lab/Barriers-NhoodPaper/data/clean/crimes2016.shp' using driver `ESRI Shapefile'
+    ## features:       25007
+    ## fields:         18
+    ## geometry type:  Point
