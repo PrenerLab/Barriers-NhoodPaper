@@ -1,7 +1,7 @@
 Build Crime Data Set
 ================
 Christopher Prener, Ph.D.
-(September 21, 2018)
+(September 22, 2018)
 
 ## Introduction
 
@@ -385,10 +385,17 @@ success <- st_as_sf(part1Crimes_success, coords = c("lon", "lat"), crs = 4269)
 success <- select(success, -XCoord, -YCoord, -xyCheck, -fullAddress)
 ```
 
-Finally, we bind the two objects together:
+Next, we bind the two objects together:
 
 ``` r
 combined <- rbind(valid, success)
+```
+
+Finally, we subset out only violent crimes so that they can be exported
+separately:
+
+``` r
+combinedViolent <- cs_filter_crime(combined, var = Crime, crime = "Violent")
 ```
 
 ## Export Data
@@ -397,14 +404,27 @@ With the data bound together, we write it to the `data/clean/`
 directory:
 
 ``` r
-st_write(combined, dsn = here("data", "clean", "crimes2016.shp"), delete_layer = TRUE)
+st_write(combined, dsn = here("data", "clean", "crimes_part1_2016.shp"), delete_layer = TRUE)
 ```
 
     ## Warning in abbreviate_shapefile_names(obj): Field names abbreviated for
     ## ESRI Shapefile driver
 
-    ## Deleting layer `crimes2016' using driver `ESRI Shapefile'
-    ## Writing layer `crimes2016' to data source `/Users/chris/GitHub/Lab/Barriers-NhoodPaper/data/clean/crimes2016.shp' using driver `ESRI Shapefile'
+    ## Deleting layer `crimes_part1_2016' using driver `ESRI Shapefile'
+    ## Writing layer `crimes_part1_2016' to data source `/Users/chris/GitHub/Lab/Barriers-NhoodPaper/data/clean/crimes_part1_2016.shp' using driver `ESRI Shapefile'
     ## features:       25007
+    ## fields:         18
+    ## geometry type:  Point
+
+``` r
+st_write(combinedViolent, dsn = here("data", "clean", "crimes_violent_2016.shp"), delete_layer = TRUE)
+```
+
+    ## Warning in abbreviate_shapefile_names(obj): Field names abbreviated for
+    ## ESRI Shapefile driver
+
+    ## Deleting layer `crimes_violent_2016' using driver `ESRI Shapefile'
+    ## Writing layer `crimes_violent_2016' to data source `/Users/chris/GitHub/Lab/Barriers-NhoodPaper/data/clean/crimes_violent_2016.shp' using driver `ESRI Shapefile'
+    ## features:       5769
     ## fields:         18
     ## geometry type:  Point

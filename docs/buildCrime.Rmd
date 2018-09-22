@@ -217,15 +217,22 @@ success <- st_as_sf(part1Crimes_success, coords = c("lon", "lat"), crs = 4269)
 success <- select(success, -XCoord, -YCoord, -xyCheck, -fullAddress)
 ```
 
-Finally, we bind the two objects together:
+Next, we bind the two objects together:
 
 ```{r combine-sf-objects}
 combined <- rbind(valid, success)
+```
+
+Finally, we subset out only violent crimes so that they can be exported separately:
+
+```{r subset-violent-crimes}
+combinedViolent <- cs_filter_crime(combined, var = Crime, crime = "Violent")
 ```
 
 ## Export Data
 With the data bound together, we write it to the `data/clean/` directory:
 
 ```{r export-data}
-st_write(combined, dsn = here("data", "clean", "crimes2016.shp"), delete_layer = TRUE)
+st_write(combined, dsn = here("data", "clean", "crimes_part1_2016.shp"), delete_layer = TRUE)
+st_write(combinedViolent, dsn = here("data", "clean", "crimes_violent_2016.shp"), delete_layer = TRUE)
 ```
