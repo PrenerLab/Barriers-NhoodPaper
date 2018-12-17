@@ -1,0 +1,98 @@
+---
+title: "censusClean"
+output: html_notebook
+author: Taylor Harris Braswell
+---
+
+This file cleans raw census St. Louis tract level census data from the 2016 ACS five-year estimates and the 1970, 1980 Brown LTDB data. It will combine both data sources to create a single dataset that will be merged into a 2016 tract level shapefile for St. Louis City. 
+
+Clear workspace
+```{r}
+rm(list = ls())
+```
+
+Load libraries
+```{r}
+library(brownLTDB)
+library(tidyr)
+library(dplyr)
+library(sf)
+```
+
+Import raw 2016 ACS data and brown data from the LTDB libary. 
+
+```{r}
+acs2016 <- read.csv("/Users/thbraswell/Documents/Local/barriersCrime/rawData/barriersRawACS.csv", header = TRUE)
+full1970 <- ltdb_stl(year = 1970, type = "full")
+sample1970 <- ltdb_stl(year = 1970, type = "sample")
+full1980 <- ltdb_stl(year = 1980, type = "full")
+```
+
+Wrangle ACS data. Note: raw data dictionary located in "barriersRawACSDictionary.txt"
+
+```{r}
+acs2016 <- mutate(acs2016,
+       pop16 = SE_T001_001,
+       nhblk16 = SE_T014_004,
+       blk16 = SE_T014_004 + SE_T014_012,
+       pov16 = SE_T114_002 + SE_T115_002 + SE_T116_002,
+       pov_det16 = SE_T114_001 +SE_T115_001 + SE_T116_001,
+       hu16 = SE_T093_001,
+       ohu16 = SE_T142_001,
+       mhm16 = SE_T101_001,
+       hu16_4vac = SE_T095_001, # Likely, the same as hu16, but using to calculuate                                   p_vac16 after interpolation.
+       vac16 =SE_T095_003
+       )
+```
+
+select needed variables from each dataset
+```{r}
+#ACS
+sub_acs16 <- select(acs2016, Geo_FIPS, pop16, nhblk16, blk16, pov16, pov_det16, hu16, ohu16, mhm16, hu16_4vac, vac16)
+sub_acs16 <- rename(sub_acs16, trtid10 = Geo_FIPS)
+
+#LTDB 1970 Full data - population, black population, housing units, occupied housing units (not needed, in hindsight), vacant housing unitys
+sub_ltdb_full <- select(full1970, TRTID10, POP70, BLACK70, HU70, VAC70, OHU70)
+sub_ltdb_full <- rename(sub_ltdb_full, 
+                       trtid10 = TRTID10,
+                       pop70 = POP70,
+                       black70 = BLACK70,
+                       hu70 = HU70,
+                       vac70 = VAC70,
+                       ohu70 = OHU70 #Note this was a mistake and pulled all occupied house units instead of owner occupied units. I don't think we'll use these, but if we do, we'll need to adjust the code and interpolate hu70 and ohu70. I did not interpolate them for this iteration because we're not pulling historical change in owner occupied units, as yet.
+)
+
+#LTDB 1970 Sample Data - poverty
+sub_ltdb_sample <- select(sample1970, TRTID10, DPOV70, NPOV70)
+sub_ltdb_sample <- rename(sub_ltdb_sample,
+                         trtid10 = TRTID10,
+                         pov_det70 = DPOV70,
+                         pov70 = NPOV70)
+                         
+#LTDB 1980 Full data - nhblk, total population, total housing units and vacant housing units
+
+sub_ltdb_80 <- select(full1980, TRTID10, POP80, NHBLK80, HU80, VAC80)
+sub_ltdb_80 <- rename(sub_ltdb_80,
+                      trtid10 = TRTID10,
+                      pop80 = POP80,
+                      nhblk80 = NHBLK80,
+                      hu80 = HU80,
+                      vac80 = VAC80
+)
+```
+
+merge the four datasets into one, export to CSV
+
+```{r}
+cleanTractData <- merge(sub_acs16, sub_ltdb_full, by= "trtid10")
+cleanTractData <- merge(cleanTractData, sub_ltdb_sample, by = "trtid10")
+cleanTractData <- merge(cleanTractData, sub_ltdb_80, by = "trtid10")
+
+
+write.csv(cleanTractData, "/Users/thbraswell/Documents/Local/barriersCrime/cleanData/cleanTractData.csv")
+```
+
+TEMPORARY - WRITE JUST 1980 DATA - DELETE BEFORE POSTING PUBLIC
+```{r}
+write.csv(sub_ltdb_80, "/Users/thbraswell/Documents/Local/barriersCrime/cleanData/cleanTract1980.csv")
+```

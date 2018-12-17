@@ -1,0 +1,22 @@
+---
+title: "spatialJoin"
+output: html_document
+---
+
+This document joins clean STL census tract data to a St. Louis census tract shapefile, clipped to the Mississippi River. 
+
+Load sf library
+```{r}
+library(sf)
+```
+
+Read shapefile and csv data
+```{r}
+tracts <- st_read("stl_tracts.shp", stringsAsFactors = FALSE)
+census <- read("cleanCensusData.csv", stringsAsFactors = FALSE)
+```
+
+Merge shapefile and csv data
+```{r}
+merge(tracts, census)
+```

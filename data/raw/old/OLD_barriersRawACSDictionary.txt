@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------------
-Codebook for Social Explorer report ID: R11965614
+Codebook for Social Explorer report ID: R11813782
 --------------------------------------------------------------------------------
 
 Contents
@@ -53,23 +53,14 @@ Tables:
             T093_001:   Housing Units
 
 
-      4. Occupancy Status
-         Universe:  Housing units
-         Name:      T95
-         Variables:
-            T095_001:   Housing Units:
-            T095_002:      Occupied
-            T095_003:      Vacant
-
-
-      5. Median House Value for All Owner-Occupied Housing Units
+      4. Median House Value for All Owner-Occupied Housing Units
          Universe:  Owner-occupied housing units
          Name:      T101
          Variables:
             T101_001:   Median Value
 
 
-      6. Poverty Status in for Children Under 18
+      5. Poverty Status in for Children Under 18
          Universe:  Population Under 18 Years of Age for whom poverty status Is determined
          Name:      T114
          Variables:
@@ -78,7 +69,7 @@ Tables:
             T114_003:      At or Above Poverty Level
 
 
-      7. Poverty Status in for Population Age 18 to 64
+      6. Poverty Status in for Population Age 18 to 64
          Universe:  Population Age 18 to 64 for whom poverty status Is determined
          Name:      T115
          Variables:
@@ -87,7 +78,7 @@ Tables:
             T115_003:      At or Above Poverty Level
 
 
-      8. Poverty Status in for Population Age 65 and Over
+      7. Poverty Status in for Population Age 65 and Over
          Universe:  Population Age 65 and Over for whom poverty status Is determined
          Name:      T116
          Variables:
@@ -96,7 +87,7 @@ Tables:
             T116_003:      At or Above Poverty Level
 
 
-      9. Owner-Occupied Housing Units
+      8. Owner-Occupied Housing Units
          Universe:  Owner-occupied housing units
          Name:      T142
          Variables:
@@ -188,9 +179,6 @@ Variables
       T014_016:       Total Population: Hispanic or Latino: Some Other Race Alone
       T014_017:       Total Population: Hispanic or Latino: Two or More Races
       T093_001:       Housing Units
-      T095_001:       Housing Units:
-      T095_002:       Housing Units: Occupied
-      T095_003:       Housing Units: Vacant
       T101_001:       Median Value
       T114_001:       Population Under 18 Years of Age for Whom Poverty Status Is Determined:
       T114_002:       Population Under 18 Years of Age for Whom Poverty Status Is Determined: Living in Poverty
@@ -222,6 +210,6 @@ accompanying data, subject to the following conditions:
 
 * Citations should also include the URL for this report:
 
-    http://www.socialexplorer.com/pub/reportdata/HtmlResults.aspx?reportid=R11965614
+    http://www.socialexplorer.com/pub/reportdata/HtmlResults.aspx?reportid=R11813782
 
 If you have any questions contact info@socialexplorer.com
