@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata xml:lang="en"><Esri><CreaDate>20181220</CreaDate><CreaTime>15595200</CreaTime><ArcGISFormat>1.0</ArcGISFormat><SyncOnce>TRUE</SyncOnce><DataProperties><lineage><Process ToolSource="c:\program files (x86)\arcgis\desktop10.6\ArcToolbox\Toolboxes\Data Management Tools.tbx\DeleteField" Date="20181217" Time="141750">DeleteField gridDataAll OBJECTID_1;OBJECTID_2;OBJECTID_3;Shape_Leng;PageName_1;PageNumber_1;area_km_1</Process></lineage></DataProperties></Esri></metadata>
