@@ -1,0 +1,225 @@
+REGRESSION
+----------
+SUMMARY OF OUTPUT: ORDINARY LEAST SQUARES
+-----------------------------------------
+Data set            :     unknown
+Weights matrix      :     unknown
+Dependent Variable  :    v_crimes                Number of Observations:         205
+Mean dependent var  :     28.0732                Number of Variables   :           2
+S.D. dependent var  :     33.3659                Degrees of Freedom    :         203
+R-squared           :      0.1028
+Adjusted R-squared  :      0.0984
+Sum squared residual:  203769.198                F-statistic           :     23.2526
+Sigma-square        :    1003.789                Prob(F-statistic)     :   2.783e-06
+S.E. of regression  :      31.683                Log likelihood        :    -998.310
+Sigma-square ML     :     993.996                Akaike info criterion :    2000.620
+S.E of regression ML:     31.5277                Schwarz criterion     :    2007.266
+
+White Standard Errors
+------------------------------------------------------------------------------------
+            Variable     Coefficient       Std.Error     t-Statistic     Probability
+------------------------------------------------------------------------------------
+            CONSTANT      22.8094174       2.4140914       9.4484483       0.0000000
+            barriers       3.8538194       0.7588432       5.0785449       0.0000009
+------------------------------------------------------------------------------------
+
+REGRESSION DIAGNOSTICS
+MULTICOLLINEARITY CONDITION NUMBER            1.608
+
+TEST ON NORMALITY OF ERRORS
+TEST                             DF        VALUE           PROB
+Jarque-Bera                       2         478.210           0.0000
+
+DIAGNOSTICS FOR HETEROSKEDASTICITY
+RANDOM COEFFICIENTS
+TEST                             DF        VALUE           PROB
+Breusch-Pagan test                1           0.039           0.8431
+Koenker-Bassett test              1           0.010           0.9220
+
+SPECIFICATION ROBUST TEST
+TEST                             DF        VALUE           PROB
+White                             2           0.542           0.7625
+
+DIAGNOSTICS FOR SPATIAL DEPENDENCE
+TEST                           MI/DF       VALUE           PROB
+Moran's I (error)              0.5690        10.925           0.0000
+Lagrange Multiplier (lag)         1         115.877           0.0000
+Robust LM (lag)                   1           2.275           0.1314
+Lagrange Multiplier (error)       1         114.192           0.0000
+Robust LM (error)                 1           0.590           0.4425
+Lagrange Multiplier (SARMA)       2         116.467           0.0000
+
+================================ END OF REPORT ===================================== REGRESSION
+----------
+SUMMARY OF OUTPUT: ORDINARY LEAST SQUARES
+-----------------------------------------
+Data set            :     unknown
+Weights matrix      :     unknown
+Dependent Variable  :    v_crimes                Number of Observations:         205
+Mean dependent var  :     28.0732                Number of Variables   :           7
+S.D. dependent var  :     33.3659                Degrees of Freedom    :         198
+R-squared           :      0.6075
+Adjusted R-squared  :      0.5956
+Sum squared residual:   89142.437                F-statistic           :     51.0747
+Sigma-square        :     450.214                Prob(F-statistic)     :   1.167e-37
+S.E. of regression  :      21.218                Log likelihood        :    -913.568
+Sigma-square ML     :     434.841                Akaike info criterion :    1841.136
+S.E of regression ML:     20.8528                Schwarz criterion     :    1864.397
+
+White Standard Errors
+------------------------------------------------------------------------------------
+            Variable     Coefficient       Std.Error     t-Statistic     Probability
+------------------------------------------------------------------------------------
+            CONSTANT     -38.9424054       6.2063559      -6.2746008       0.0000000
+           p_nhblk16      20.0827000       7.0675388       2.8415408       0.0049594
+             p_pov16      25.6859790      18.0537876       1.4227474       0.1563830
+            p_popChg      16.4284812      10.5144550       1.5624663       0.1197751
+             p_vac16     101.5015213      32.4426506       3.1286445       0.0020212
+               pop16       0.0201951       0.0023536       8.5806204       0.0000000
+            barriers       1.3355521       0.7011793       1.9047227       0.0582656
+------------------------------------------------------------------------------------
+
+REGRESSION DIAGNOSTICS
+MULTICOLLINEARITY CONDITION NUMBER           11.985
+
+TEST ON NORMALITY OF ERRORS
+TEST                             DF        VALUE           PROB
+Jarque-Bera                       2          60.969           0.0000
+
+DIAGNOSTICS FOR HETEROSKEDASTICITY
+RANDOM COEFFICIENTS
+TEST                             DF        VALUE           PROB
+Breusch-Pagan test                6         119.040           0.0000
+Koenker-Bassett test              6          60.115           0.0000
+
+SPECIFICATION ROBUST TEST
+TEST                             DF        VALUE           PROB
+White                            27         115.999           0.0000
+
+DIAGNOSTICS FOR SPATIAL DEPENDENCE
+TEST                           MI/DF       VALUE           PROB
+Moran's I (error)              0.3243         6.671           0.0000
+Lagrange Multiplier (lag)         1          40.022           0.0000
+Robust LM (lag)                   1           4.686           0.0304
+Lagrange Multiplier (error)       1          37.105           0.0000
+Robust LM (error)                 1           1.770           0.1834
+Lagrange Multiplier (SARMA)       2          41.791           0.0000
+
+================================ END OF REPORT ===================================== REGRESSION
+----------
+SUMMARY OF OUTPUT: SPATIAL TWO STAGE LEAST SQUARES
+--------------------------------------------------
+Data set            :     unknown
+Weights matrix      :     unknown
+Dependent Variable  :    v_crimes                Number of Observations:         205
+Mean dependent var  :     28.0732                Number of Variables   :           8
+S.D. dependent var  :     33.3659                Degrees of Freedom    :         197
+Pseudo R-squared    :      0.6893
+Spatial Pseudo R-squared:  0.6136
+
+White Standard Errors
+------------------------------------------------------------------------------------
+            Variable     Coefficient       Std.Error     z-Statistic     Probability
+------------------------------------------------------------------------------------
+            CONSTANT     -30.9560103       5.9252862      -5.2243908       0.0000002
+           p_nhblk16      13.8820562       7.4196054       1.8709966       0.0613456
+             p_pov16       8.4759888      16.8109891       0.5041933       0.6141255
+            p_popChg      13.7283077       8.9921809       1.5266939       0.1268371
+             p_vac16      85.2173126      27.6562586       3.0813030       0.0020610
+               pop16       0.0153471       0.0024469       6.2720538       0.0000000
+            barriers       1.2773729       0.6371852       2.0047120       0.0449938
+          W_v_crimes       0.3525180       0.1418304       2.4854901       0.0129373
+------------------------------------------------------------------------------------
+Instrumented: W_v_crimes
+Instruments: W_barriers, W_p_nhblk16, W_p_popChg, W_p_pov16, W_p_vac16,
+             W_pop16
+
+DIAGNOSTICS FOR SPATIAL DEPENDENCE
+TEST                           MI/DF       VALUE           PROB
+Anselin-Kelejian Test             1           1.401          0.2366
+================================ END OF REPORT ===================================== REGRESSION
+----------
+SUMMARY OF OUTPUT: ORDINARY LEAST SQUARES
+-----------------------------------------
+Data set            :     unknown
+Weights matrix      :     unknown
+Dependent Variable  :    barriers                Number of Observations:         205
+Mean dependent var  :      1.3659                Number of Variables   :           6
+S.D. dependent var  :      2.7756                Degrees of Freedom    :         199
+R-squared           :      0.1899
+Adjusted R-squared  :      0.1696
+Sum squared residual:    1273.084                F-statistic           :      9.3312
+Sigma-square        :       6.397                Prob(F-statistic)     :   5.306e-08
+S.E. of regression  :       2.529                Log likelihood        :    -478.067
+Sigma-square ML     :       6.210                Akaike info criterion :     968.133
+S.E of regression ML:      2.4920                Schwarz criterion     :     988.071
+
+White Standard Errors
+------------------------------------------------------------------------------------
+            Variable     Coefficient       Std.Error     t-Statistic     Probability
+------------------------------------------------------------------------------------
+            CONSTANT      -1.2588650       0.5102942      -2.4669394       0.0144724
+           p_nhblk16       2.2274131       1.0311980       2.1600246       0.0319664
+             p_pov16      -0.1600204       2.2093678      -0.0724281       0.9423339
+            p_popChg      -3.9286568       1.0538128      -3.7280406       0.0002515
+             p_vac16      -5.9570015       3.7013890      -1.6093962       0.1091149
+               pop16       0.0007200       0.0001589       4.5321052       0.0000101
+------------------------------------------------------------------------------------
+
+REGRESSION DIAGNOSTICS
+MULTICOLLINEARITY CONDITION NUMBER           11.573
+
+TEST ON NORMALITY OF ERRORS
+TEST                             DF        VALUE           PROB
+Jarque-Bera                       2         266.359           0.0000
+
+DIAGNOSTICS FOR HETEROSKEDASTICITY
+RANDOM COEFFICIENTS
+TEST                             DF        VALUE           PROB
+Breusch-Pagan test                5          56.390           0.0000
+Koenker-Bassett test              5          18.844           0.0021
+
+SPECIFICATION ROBUST TEST
+TEST                             DF        VALUE           PROB
+White                            20          61.157           0.0000
+
+DIAGNOSTICS FOR SPATIAL DEPENDENCE
+TEST                           MI/DF       VALUE           PROB
+Moran's I (error)              0.3818         7.725           0.0000
+Lagrange Multiplier (lag)         1          51.127           0.0000
+Robust LM (lag)                   1           0.603           0.4373
+Lagrange Multiplier (error)       1          51.410           0.0000
+Robust LM (error)                 1           0.886           0.3464
+Lagrange Multiplier (SARMA)       2          52.013           0.0000
+
+================================ END OF REPORT ===================================== REGRESSION
+----------
+SUMMARY OF OUTPUT: SPATIAL TWO STAGE LEAST SQUARES
+--------------------------------------------------
+Data set            :     unknown
+Weights matrix      :     unknown
+Dependent Variable  :    barriers                Number of Observations:         205
+Mean dependent var  :      1.3659                Number of Variables   :           7
+S.D. dependent var  :      2.7756                Degrees of Freedom    :         198
+Pseudo R-squared    :      0.4429
+Spatial Pseudo R-squared:  0.1890
+
+White Standard Errors
+------------------------------------------------------------------------------------
+            Variable     Coefficient       Std.Error     z-Statistic     Probability
+------------------------------------------------------------------------------------
+            CONSTANT      -0.9122265       0.4210848      -2.1663722       0.0302828
+           p_nhblk16       1.6717042       0.8824140       1.8944670       0.0581630
+             p_pov16      -0.4549014       1.8719483      -0.2430096       0.8079980
+            p_popChg      -2.4207448       0.9885132      -2.4488744       0.0143303
+             p_vac16      -4.3892034       3.2346722      -1.3569237       0.1748055
+               pop16       0.0004775       0.0001631       2.9281485       0.0034099
+          W_barriers       0.5040878       0.2375420       2.1220995       0.0338294
+------------------------------------------------------------------------------------
+Instrumented: W_barriers
+Instruments: W_p_nhblk16, W_p_popChg, W_p_pov16, W_p_vac16, W_pop16
+
+DIAGNOSTICS FOR SPATIAL DEPENDENCE
+TEST                           MI/DF       VALUE           PROB
+Anselin-Kelejian Test             1           0.202          0.6533
+================================ END OF REPORT =====================================
