@@ -1,0 +1,130 @@
+--------------------------------------------------------------------------------
+Codebook for Social Explorer report ID: R12229899
+--------------------------------------------------------------------------------
+
+Contents
+    - Table Summary
+    - Data Dictionary
+    - Citation and Use
+
+
+--------------------------------------------------------------------------------
+Table Summary
+--------------------------------------------------------------------------------
+ 
+Survey:           Census 1980
+Dataset:          Social Explorer Tables
+Tables:
+
+      1. Total Population
+         Universe:  Total Population
+         Name:      T1
+         Variables:
+            T001_001:   Total Population
+
+
+      2. Area (square miles)
+         Universe:  Total Area
+         Name:      A2
+         Variables:
+            A002_001:   Total Area in Square Miles
+
+
+      3. Race By Spanish Origin Status
+         Universe:  Total Population
+         Name:      T13
+         Variables:
+            T013_001:   Total Population:
+            T013_002:      Persons Not of Spanish origin:
+            T013_003:         White
+            T013_004:         Black
+            T013_005:         Asian, Pacific Islander, American Indian, Eskimo, Aleut
+            T013_006:         Other
+            T013_007:      Persons Of Spanish Origin:
+            T013_008:         White
+            T013_009:         Black
+            T013_010:         American Indian, Eskimo, Aleut, and Asian and Pacific Islander
+            T013_011:         Other
+
+
+      4. Occupancy Status
+         Universe:  Year-Round Housing Units
+         Name:      T82
+         Variables:
+            T082_001:   Year-Round Housing Units:
+            T082_002:      Occupied
+            T082_003:      Vacant
+
+
+      5. Poverty Status In 1979 (short version)
+         Universe:  Persons For Whom Poverty Status Is Determined
+         Name:      T100
+         Variables:
+            T100_001:   Population For Whom Poverty Status Is Determined:
+            T100_002:      Above poverty level
+            T100_003:      Below poverty level
+
+
+
+
+
+ 
+ 
+ 
+--------------------------------------------------------------------------------
+Data Dictionary
+--------------------------------------------------------------------------------
+ 
+Variables 
+      Name:           Area Name-Legal/Statistical Area Description (LSAD) Term-Part Indicator
+      QName:          Qualifying Name
+      GISJOIN:        NHGIS GIS Join Field
+      GISJOIN2:       NHGIS GISJoin2 Field
+      SUMLEV:         Summary Level
+      shape_area:     Total Area
+      FIPS:           FIPS
+      STATE:          FIPS State Code
+      COUNTY:         FIPS County Code
+      TRACT6:         Tract or Block Numbering Area (BNA)
+      T001_001:       Total Population
+      A002_001:       Total Area in Square Miles
+      T013_001:       Total Population
+      T013_002:       Total Population: Persons Not of Spanish origin
+      T013_003:       Total Population: Persons Not of Spanish origin: White
+      T013_004:       Total Population: Persons Not of Spanish origin: Black
+      T013_005:       Total Population: Persons Not of Spanish origin: Asian, Pacific Islander, American Indian, Eskimo, Aleut
+      T013_006:       Total Population: Persons Not of Spanish origin: Other
+      T013_007:       Total Population: Persons Of Spanish Origin
+      T013_008:       Total Population: Persons Of Spanish Origin: White
+      T013_009:       Total Population: Persons Of Spanish Origin: Black
+      T013_010:       Total Population: Persons Of Spanish Origin: American Indian, Eskimo, Aleut, and Asian and Pacific Islander
+      T013_011:       Total Population: Persons Of Spanish Origin: Other
+      T082_001:       Year-Round Housing Units
+      T082_002:       Year-Round Housing Units: Occupied
+      T082_003:       Year-Round Housing Units: Vacant
+      T100_001:       Population For Whom Poverty Status Is Determined
+      T100_002:       Population For Whom Poverty Status Is Determined: Above poverty level
+      T100_003:       Population For Whom Poverty Status Is Determined: Below poverty level
+
+
+
+
+--------------------------------------------------------------------------------
+Citation and Use of Data
+--------------------------------------------------------------------------------
+ 
+All persons are granted a limited license to use this documentation and the
+accompanying data, subject to the following conditions:
+
+* Publications and research reports employing the data
+  must cite it appropriately. The citation should include the following:
+
+	  www.socialexplorer.com
+	  New York City, NY: Social Explorer 2019
+
+
+* Citations should also include the URL for this report:
+
+    http://www.socialexplorer.com/pub/reportdata/HtmlResults.aspx?reportid=R12229899
+
+If you have any questions contact info@socialexplorer.com
