@@ -1,0 +1,609 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+rm(list=ls())
+```
+
+
+```{r}
+library(tidycensus)
+library(brownLTDB)
+library(tidyverse)
+library(sf)
+library(areal)
+library(gateway)
+library(here)
+```
+
+```{r}
+census_api_key(Sys.getenv("CENSUS_API_KEY"), overwrite=TRUE, install=TRUE)
+```
+
+Pull searchable list of variables 
+```{r}
+v16 <- load_variables(2016, "acs5", cache= TRUE)
+
+
+View(v16)
+```
+
+Pull variables: 
+B01003_001 (total population)
+B03002_001 (number of people for whom race is determine)
+B03002_004 (non-hispanic black population) 
+B17020_001 (number of people for whom poverty status is determined)
+B17020_002 (number of people living in poverty sometime over past 12 months)
+B25008_001 (number of people living in occupied housing)
+B25008_002 (number of people living in owner-occupied housing)
+B25002_001 (total housing units)
+B25002_003 (total vacant housing units)
+
+```{r}
+acs16 <- get_acs(geography = "tract", variables = c(pop = "B01003_001", race_d = "B03002_001", black = "B03002_004", pov_d = "B17020_001", in_pov = "B17020_002", ppohu = "B25008_001", ppoohu = "B25008_002", hu = "B25002_001", vac_hu = "B25002_003"), state = "MO", county = "St. Louis City", output = "wide", geometry = TRUE)
+```
+
+Import 1950, 1970, and 1980 census data and tract shapefiles
+```{r}
+dec50_raw <- read.csv(here("data/census/census1950.csv"))
+dec70_raw <- read.csv(here("data/census/census1970.csv"))
+dec80_raw <- read.csv(here("data/census/census1980.csv"))
+tracts50 <- st_read(here("data/tracts/STL_DEMOGRAPHICS_tracts50/STL_DEMOGRAPHICS_tracts50.shp"))
+tracts70 <- st_read(here("data/tracts/STL_DEMOGRAPHICS_tracts70/STL_DEMOGRAPHICS_tracts70.shp"))
+tracts80 <- st_read(here("data/tracts/STL_DEMOGRAPHICS_tracts80/STL_DEMOGRAPHICS_tracts80.shp"))
+```
+Project ACS and the three tract shapefiles in NAD 1983 StatePlane Missouri East
+```{r}
+acs16 <- st_transform(acs16, crs= 6512)
+tracts50 <- st_transform(tracts50, crs = 6512)
+tracts70 <- st_transform(tracts70, crs = 6512)
+tracts80 <- st_transform(tracts80, crs = 6512)
+```
+
+Change variable names of the 1950 and 1980 decennial data to a shapefile friendly format
+```{r}
+dec50 <- dec50_raw %>% rename(TRACTID = Geo_Name, pop50 = SE_T001_001) %>% select(TRACTID, pop50)
+
+dec70 <- dec70_raw %>% rename(TRACTID = Geo_TractCode, pop70 = SE_T001_001) %>% select(TRACTID, pop70)
+
+dec80 <- dec80_raw %>% rename(TRACTID = Geo_TRACT6, pop80 = SE_T001_001, area_mi = SE_A002_001, rpop80= SE_T013_001, nhblk80 = SE_T013_004, hu80 = SE_T082_001, vhu80 = SE_T082_003, povd80 = SE_T100_001, inpov80 = SE_T100_003) %>% select(TRACTID, pop80, area_mi, rpop80, nhblk80, hu80, vhu80, povd80, inpov80)
+                          
+```
+
+Join the tract data to their respective shapefiles.
+```{r}
+tracts_dec50 <- inner_join(dec50, tracts50, by = "TRACTID")
+tracts_dec70 <- inner_join(dec70, tracts70, by = "TRACTID")
+tracts_dec80 <- inner_join(dec80, tracts80, by = "TRACTID")
+```
+
+Save 1950, 1970, 1980, and 2016 data for clipping in ArcMap
+```{r}
+st_write(acs16, here("data/tracts/to_clip/tracts_acs16.shp"), delete_layer = TRUE)
+st_write(tracts_dec50, here("data/tracts/to_clip/tracts_dec50.shp"), delete_layer = TRUE)
+st_write(tracts_dec70, here("data/tracts/to_clip/tracts_dec70.shp"), delete_layer = TRUE)
+st_write(tracts_dec80, here("data/tracts/to_clip/tracts_dec80.shp"), delete_layer = TRUE)
+```
+
+**Pause here to clip shapes in ArcMap to a file that excludes the Mississippi River and parks. Any of the square kilometer grid squares can serve this purpose. We used the 1 square km shapefile.**
+
+# Clear environment and import clipped shapefiles
+```{r}
+rm(list=ls())
+```
+
+```{r}
+tracts50 <- st_read(here("data/tracts/clipped/dec50_clipped.shp"))
+tracts70 <- st_read(here("data/tracts/clipped/dec70_clipped.shp"))
+tracts80 <- st_read(here("data/tracts/clipped/dec80_clipped.shp"))
+tracts16 <- st_read(here("data/tracts/clipped/acs16_clipped.shp"))
+
+```
+
+## Use areal to interpolate the count data into one, half, and quarter square kilometer grid squares.
+### First, import the three grid square datasets.
+```{r}
+one_km_grid <- st_read(here("data/grids/STL_Grids_OneK/one_km_grid.shp"))
+half_km_grid <- st_read(here("data/grids/STL_Grids_HalfK/STL_Grids_HalfK.shp"))
+quarter_km_grid <- st_read(here("data/grids/STL_Grids_QuarterK/STL_Grids_QuarterK.shp"))
+```
+### Convert the grid datasets to NAD 1983 StatePlane Missouri East
+```{r}
+one_km_grid <- st_transform(one_km_grid, crs = 6512)
+half_km_grid <- st_transform(half_km_grid, crs = 6512)
+quarter_km_grid <- st_transform(quarter_km_grid, crs = 6512)
+```
+
+
+### Create a unique ID variable for each grid square in each grid dataset
+```{r}
+one_km_grid <- rowid_to_column(one_km_grid, var = "rowid")
+half_km_grid <- rowid_to_column(half_km_grid, var = "rowid")
+quarter_km_grid <- rowid_to_column(quarter_km_grid, var = "rowid")
+
+```
+
+### Use the areal package to spatially interpolate tract data to each scale of grid square. We need to do this for each tract dataset at each scale of grid square.
+#### First interpolate the 2016 data
+```{r}
+one_km_grid_int16 <- aw_interpolate(one_km_grid, tid = "rowid", source = tracts16, sid = "GEOID", weight = "sum", output = "sf", extensive = c("popE", "race_dE", "blackE", "pov_dE", "in_povE", "ppohuE", "ppoohuE", "huE", "vac_huE"))
+
+half_km_grid_int16 <- aw_interpolate(half_km_grid, tid = "rowid", source = tracts16, sid = "GEOID", weight = "sum", output = "sf", extensive = c("popE", "race_dE", "blackE", "pov_dE", "in_povE", "ppohuE", "ppoohuE", "huE", "vac_huE"))
+
+quarter_km_grid_int16 <- aw_interpolate(quarter_km_grid, tid = "rowid", source = tracts16, sid = "GEOID", weight = "sum", output = "sf", extensive = c("popE", "race_dE", "blackE", "pov_dE", "in_povE", "ppohuE", "ppoohuE", "huE", "vac_huE"))
+```
+
+#### Interpolate the 1980 data
+```{r}
+one_km_grid_int80 <- aw_interpolate(one_km_grid, tid = "rowid", source = tracts80, sid = "TRACTID", weight = "sum", output = "sf", extensive = c("pop80", "nhblk80", "hu80", "vhu80", "povd80", "inpov80"))
+
+half_km_grid_int80 <- aw_interpolate(half_km_grid, tid = "rowid", source = tracts80, sid = "TRACTID", weight = "sum", output = "sf", extensive = c("pop80", "nhblk80", "hu80", "vhu80", "povd80", "inpov80"))
+
+quarter_km_grid_int80 <- aw_interpolate(quarter_km_grid, tid = "rowid", source = tracts80, sid = "TRACTID", weight = "sum", output = "sf", extensive = c("pop80", "nhblk80", "hu80", "vhu80", "povd80", "inpov80"))
+```
+
+
+#### Interpolate the 1970 data 
+```{r}
+one_km_grid_int70 <- aw_interpolate(one_km_grid, tid = "rowid", source = tracts70, sid = "TRACTID", weight = "sum", output = "sf", extensive = "pop70")
+
+half_km_grid_int70 <- aw_interpolate(half_km_grid, tid = "rowid", source = tracts70, sid = "TRACTID", weight = "sum", output = "sf", extensive = "pop70")
+
+quarter_km_grid_int70 <- aw_interpolate(quarter_km_grid, tid = "rowid", source = tracts70, sid = "TRACTID", weight = "sum", output = "sf", extensive = "pop70")
+```
+
+
+#### Interpolate the 1950 data
+```{r}
+one_km_grid_int50 <- aw_interpolate(one_km_grid, tid = "rowid", source = tracts50, sid = "TRACTID", weight = "sum", output = "sf", extensive = "pop50")
+
+half_km_grid_int50 <- aw_interpolate(half_km_grid, tid = "rowid", source = tracts50, sid = "TRACTID", weight = "sum", output = "sf", extensive = "pop50")
+
+quarter_km_grid_int50 <- aw_interpolate(quarter_km_grid, tid = "rowid", source = tracts50, sid = "TRACTID", weight = "sum", output = "sf", extensive = "pop50")
+```
+
+#### Join the one square kilometer datasets
+```{r}
+# Join each year of grid data
+one_km_grid_join <- inner_join(as.data.frame(one_km_grid_int16), one_km_grid_int80, by = "rowid") %>%
+  inner_join(., one_km_grid_int70, by = "rowid") %>%
+  inner_join(., one_km_grid_int50, by = "rowid") %>%
+  st_sf(sf_column_name = 'geometry.x') %>%
+  select(rowid, popE, race_dE, blackE, pov_dE, in_povE, ppohuE, ppoohuE, huE, vac_huE, pop80, nhblk80, hu80, vhu80, povd80, inpov80, pop70, pop50)
+
+# check that it is an sf object, has the correct variables, and has the correct coordinate system
+str(one_km_grid_join)
+st_crs(one_km_grid_join)
+```
+#### Join the half square kilometer datasets
+```{r}
+# Join each year of grid data
+half_km_grid_join <- inner_join(as.data.frame(half_km_grid_int16), half_km_grid_int80, by = "rowid") %>%
+  inner_join(., half_km_grid_int70, by = "rowid") %>%
+  inner_join(., half_km_grid_int50, by = "rowid") %>%
+  st_sf(sf_column_name = 'geometry.x') %>%
+  select(rowid, popE, race_dE, blackE, pov_dE, in_povE, ppohuE, ppoohuE, huE, vac_huE, pop80, nhblk80, hu80, vhu80, povd80, inpov80, pop70, pop50)
+
+# check that it is an sf object, has the correct variables, and has the correct coordinate system
+str(half_km_grid_join)
+st_crs(half_km_grid_join)
+```
+
+#### Join the quarter square kilometer datasets
+```{r}
+# Join each year of grid data
+quarter_km_grid_join <- inner_join(as.data.frame(quarter_km_grid_int16), quarter_km_grid_int80, by = "rowid") %>%
+  inner_join(., quarter_km_grid_int70, by = "rowid") %>%
+  inner_join(., quarter_km_grid_int50, by = "rowid") %>%
+  st_sf(sf_column_name = 'geometry.x') %>%
+  select(rowid, popE, race_dE, blackE, pov_dE, in_povE, ppohuE, ppoohuE, huE, vac_huE, pop80, nhblk80, hu80, vhu80, povd80, inpov80, pop70, pop50)
+
+# check that it is an sf object, has the correct variables, and has the correct coordinate system
+str(quarter_km_grid_join)
+st_crs(quarter_km_grid_join)
+```
+
+
+## Spatially join barrier, crime, storefront, and intersection data into each grid dataset.
+First, load each dataset. 
+```{r}
+barriers <- st_read(here("data/barriers/barriers2016.shp"))
+crime <- st_read(here("data/crime/crimes_violent_2016.shp"))
+storefronts <- st_read(here("data/storefronts/all56_nACSxMSA__41180.0.geojson"))
+intersections <- st_read(here("data/intersections/intersections.shp"))
+```
+
+Line up the projections
+```{r}
+barriers <- st_transform(barriers, crs = 6512)
+crime <- st_transform(crime, crs = 6512)
+storefronts <- st_transform(storefronts, crs = 6512)
+intersections <- st_transform(intersections, crs = 6512)
+```
+
+### One square kilometer grid squares
+Do the spatial join and aggregate barriers
+```{r}
+# spatial join
+join1 <- st_join(barriers, one_km_grid_join)
+
+# remove geometry - we'll do an aspatial join with one_km_grid_join later on
+st_geometry(join1) <- NULL
+
+# arggregate
+join1 %>%
+  group_by(rowid) %>%
+  summarise(barriers = n()) -> join1
+
+# combine with the interpolated grid dataset
+one_km_grid_join1 <- left_join(one_km_grid_join, join1, by = "rowid")
+
+# replace missing values (grid squares with no barriers) with a zero
+one_km_grid_join1 <- mutate(one_km_grid_join1, barriers = ifelse(is.na(barriers) == TRUE, 0, barriers))
+
+```
+
+Test barrier map to verify it worked
+```{r}
+ggplot() + 
+  geom_sf(data = one_km_grid_join1, aes(fill = barriers)) +
+  scale_fill_distiller("barriers", palette = "OrRd")
+```
+
+Repeat the above steps for crime
+```{r}
+# spatial join
+join2 <- st_join(crime, one_km_grid_join)
+
+# remove geometry - we'll do an aspatial join with one_km_grid_join later on
+st_geometry(join2) <- NULL
+
+# arggregate
+join2 %>%
+  group_by(rowid) %>%
+  summarise(crime = n()) -> join2
+
+# combine with the interpolated grid dataset
+one_km_grid_join2 <- left_join(one_km_grid_join1, join2, by = "rowid")
+
+# replace missing values (grid squares with no crime) with a zero
+one_km_grid_join2 <- mutate(one_km_grid_join2, crime = ifelse(is.na(crime) == TRUE, 0, crime))
+```
+
+Test crime map to verify it worked
+```{r}
+ggplot() + 
+  geom_sf(data = one_km_grid_join2, aes(fill = crime)) +
+  scale_fill_distiller("violent crime", type = "seq", palette = "YlGn")
+```
+Repeat the above steps for storefronts
+```{r}
+# spatial join
+join3 <- st_join(storefronts, one_km_grid_join)
+
+# remove geometry - we'll do an aspatial join with one_km_grid_join later on
+st_geometry(join3) <- NULL
+
+# arggregate
+join3 %>%
+  group_by(rowid) %>%
+  summarise(storef = n()) -> join3
+
+# combine with the interpolated grid dataset
+one_km_grid_join3 <- left_join(one_km_grid_join2, join3, by = "rowid")
+
+# replace missing values (grid squares with no storefront) with a zero
+one_km_grid_join3 <- mutate(one_km_grid_join3, storef = ifelse(is.na(storef) == TRUE, 0, storef))
+```
+
+Test storefront map to see if it worked
+```{r}
+ggplot() + 
+  geom_sf(data = one_km_grid_join3, aes(fill = storef)) +
+  scale_fill_distiller("storefronts", type = "seq", palette = "Reds")
+```
+
+Repeat the above steps for intersections
+```{r}
+# spatial join
+join4 <- st_join(intersections, one_km_grid_join)
+
+# remove geometry - we'll do an aspatial join with one_km_grid_join later on
+st_geometry(join4) <- NULL
+
+# arggregate
+join4 %>%
+  group_by(rowid) %>%
+  summarise(inters = n()) -> join4
+
+# combine with the interpolated grid dataset
+one_km_grid_join4 <- left_join(one_km_grid_join3, join4, by = "rowid")
+
+# replace missing values (grid squares with no storefront) with a zero
+one_km_grid_join4 <- mutate(one_km_grid_join4, inters = ifelse(is.na(inters) == TRUE, 0, inters))
+```
+
+Test intersections map to see if it worked
+```{r}
+ggplot() + 
+  geom_sf(data = one_km_grid_join4, aes(fill = inters)) +
+  scale_fill_distiller("intersections", type = "seq", palette = "Reds")
+```
+
+### Repeat all of the above but for half square kilometer grid squares
+Do the spatial join and aggregate barriers
+```{r}
+# spatial join
+half_join1 <- st_join(barriers, half_km_grid_join)
+
+# remove geometry - we'll do an aspatial join with half_km_grid_join later on
+st_geometry(half_join1) <- NULL
+
+# arggregate
+half_join1 %>%
+  group_by(rowid) %>%
+  summarise(barriers = n()) -> half_join1
+
+# combine with the interpolated grid dataset
+half_km_grid_join1 <- left_join(half_km_grid_join, half_join1, by = "rowid")
+
+# replace missing values (grid squares with no barriers) with a zero
+half_km_grid_join1 <- mutate(half_km_grid_join1, barriers = ifelse(is.na(barriers) == TRUE, 0, barriers))
+
+```
+
+Test barrier map to verify it worked
+```{r}
+ggplot() + 
+  geom_sf(data = half_km_grid_join1, aes(fill = barriers)) +
+  scale_fill_distiller("barriers", palette = "OrRd")
+```
+
+Repeat the above steps for crime
+```{r}
+# spatial join
+half_join2 <- st_join(crime, half_km_grid_join)
+
+# remove geometry - we'll do an aspatial join with half_km_grid_join later on
+st_geometry(half_join2) <- NULL
+
+# arggregate
+half_join2 %>%
+  group_by(rowid) %>%
+  summarise(crime = n()) -> half_join2
+
+# combine with the interpolated grid dataset
+half_km_grid_join2 <- left_join(half_km_grid_join1, half_join2, by = "rowid")
+
+# replace missing values (grid squares with no crime) with a zero
+half_km_grid_join2 <- mutate(half_km_grid_join2, crime = ifelse(is.na(crime) == TRUE, 0, crime))
+```
+
+Test crime map to verify it worked
+```{r}
+ggplot() + 
+  geom_sf(data = half_km_grid_join2, aes(fill = crime)) +
+  scale_fill_distiller("violent crime", type = "seq", palette = "YlGn")
+```
+
+Repeat the above steps for storefronts
+```{r}
+# spatial join
+half_join3 <- st_join(storefronts, half_km_grid_join)
+
+# remove geometry - we'll do an aspatial join with half_km_grid_join later on
+st_geometry(half_join3) <- NULL
+
+# arggregate
+half_join3 %>%
+  group_by(rowid) %>%
+  summarise(storef = n()) -> half_join3
+
+# combine with the interpolated grid dataset
+half_km_grid_join3 <- left_join(half_km_grid_join2, half_join3, by = "rowid")
+
+# replace missing values (grid squares with no storefront) with a zero
+half_km_grid_join3 <- mutate(half_km_grid_join3, storef = ifelse(is.na(storef) == TRUE, 0, storef))
+```
+
+Test storefront map to see if it worked
+```{r}
+ggplot() + 
+  geom_sf(data = half_km_grid_join3, aes(fill = storef)) +
+  scale_fill_distiller("storefronts", type = "seq", palette = "Blues")
+```
+Repeat the above steps for intersections
+```{r}
+# spatial join
+half_join4 <- st_join(intersections, half_km_grid_join)
+
+# remove geometry - we'll do an aspatial join with half_km_grid_join later on
+st_geometry(half_join4) <- NULL
+
+# arggregate
+half_join4 %>%
+  group_by(rowid) %>%
+  summarise(inters = n()) -> half_join4
+
+# combine with the interpolated grid dataset
+half_km_grid_join4 <- left_join(half_km_grid_join3, half_join4, by = "rowid")
+
+# replace missing values (grid squares with no storefront) with a zero
+half_km_grid_join4 <- mutate(half_km_grid_join4, inters = ifelse(is.na(inters) == TRUE, 0, inters))
+```
+
+Test intersections map to see if it worked
+```{r}
+ggplot() + 
+  geom_sf(data = half_km_grid_join4, aes(fill = inters)) +
+  scale_fill_distiller("intersections", type = "seq", palette = "Reds")
+```
+### Finally, repeat all the above steps for quarter square mile grid squares
+Do the spatial join and aggregate barriers
+```{r}
+# spatial join
+quarter_join1 <- st_join(barriers, quarter_km_grid_join)
+
+# remove geometry - we'll do an aspatial join with quarter_km_grid_join later on
+st_geometry(quarter_join1) <- NULL
+
+# arggregate
+quarter_join1 %>%
+  group_by(rowid) %>%
+  summarise(barriers = n()) -> quarter_join1
+
+# combine with the interpolated grid dataset
+quarter_km_grid_join1 <- left_join(quarter_km_grid_join, quarter_join1, by = "rowid")
+
+# replace missing values (grid squares with no barriers) with a zero
+quarter_km_grid_join1 <- mutate(quarter_km_grid_join1, barriers = ifelse(is.na(barriers) == TRUE, 0, barriers))
+
+```
+
+Test barrier map to verify it worked
+```{r}
+ggplot() + 
+  geom_sf(data = quarter_km_grid_join1, aes(fill = barriers)) +
+  scale_fill_distiller("barriers", palette = "OrRd")
+```
+Repeat the above steps for crime
+```{r}
+# spatial join
+quarter_join2 <- st_join(crime, quarter_km_grid_join)
+
+# remove geometry - we'll do an aspatial join with quarter_km_grid_join later on
+st_geometry(quarter_join2) <- NULL
+
+# arggregate
+quarter_join2 %>%
+  group_by(rowid) %>%
+  summarise(crime = n()) -> quarter_join2
+
+# combine with the interpolated grid dataset
+quarter_km_grid_join2 <- left_join(quarter_km_grid_join1, quarter_join2, by = "rowid")
+
+# replace missing values (grid squares with no crime) with a zero
+quarter_km_grid_join2 <- mutate(quarter_km_grid_join2, crime = ifelse(is.na(crime) == TRUE, 0, crime))
+```
+
+Test crime map to verify it worked
+```{r}
+ggplot() + 
+  geom_sf(data = quarter_km_grid_join2, aes(fill = crime)) +
+  scale_fill_distiller("violent crime", type = "seq", palette = "YlGn")
+```
+Repeat the above steps for storefronts
+```{r}
+# spatial join
+quarter_join3 <- st_join(storefronts, quarter_km_grid_join)
+
+# remove geometry - we'll do an aspatial join with quarter_km_grid_join later on
+st_geometry(quarter_join3) <- NULL
+
+# arggregate
+quarter_join3 %>%
+  group_by(rowid) %>%
+  summarise(storef = n()) -> quarter_join3
+
+# combine with the interpolated grid dataset
+quarter_km_grid_join3 <- left_join(quarter_km_grid_join2, quarter_join3, by = "rowid")
+
+# replace missing values (grid squares with no storefront) with a zero
+quarter_km_grid_join3 <- mutate(quarter_km_grid_join3, storef = ifelse(is.na(storef) == TRUE, 0, storef))
+```
+
+Test storefront map to see if it worked
+```{r}
+ggplot() + 
+  geom_sf(data = quarter_km_grid_join3, aes(fill = storef)) +
+  scale_fill_distiller("storefronts", type = "seq", palette = "Blues")
+```
+Repeat the above steps for intersections
+```{r}
+# spatial join
+quarter_join4 <- st_join(intersections, quarter_km_grid_join)
+
+# remove geometry - we'll do an aspatial join with  quarter_km_grid_join later on
+st_geometry(quarter_join4) <- NULL
+
+# arggregate
+quarter_join4 %>%
+  group_by(rowid) %>%
+  summarise(inters = n()) -> quarter_join4
+
+# combine with the interpolated grid dataset
+quarter_km_grid_join4 <- left_join(quarter_km_grid_join3, quarter_join4, by = "rowid")
+
+# replace missing values (grid squares with no storefront) with a zero
+quarter_km_grid_join4 <- mutate(quarter_km_grid_join4, inters = ifelse(is.na(inters) == TRUE, 0, inters))
+```
+
+Test intersections map to see if it worked
+```{r}
+ggplot() + 
+  geom_sf(data = quarter_km_grid_join4, aes(fill = inters)) +
+  scale_fill_distiller("intersections", type = "seq", palette = "Reds")
+```
+## Calculate percentage variables from ACS and LTDB to be used in the analyses
+
+```{r}
+one_km_grid_join4 %>%
+  mutate(p_blk16 = (blackE / race_dE) * 100, 
+         p_pov16 = (in_povE / pov_dE) * 100,
+         p_pooh16 = (ppoohuE / ppohuE) * 100,
+         p_vac16 = (vac_huE / huE) * 100,
+         pc70_16 = ((popE - pop70) / pop70) * 100,
+         crime_r = (crime / popE),
+         barr_r = (barriers / popE),
+         p_blk80 = (nhblk80 / pop80) * 100,
+         p_vac80 = (vhu80 / hu80) * 100,
+         p_pov80 = (inpov80 / povd80) * 100,
+         pc70_80 = ((pop80 - pop70) / pop70) * 100,
+         pc50_16 = ((popE - pop50) / pop50) * 100,
+         pc50_80 = ((pop80 - pop50) / pop50) * 100) %>%
+  select(popE, p_blk16, p_pov16, p_pooh16, p_vac16, pc70_16, barriers, crime, storef, inters, crime_r, barr_r, pop80, p_blk80, p_vac80, p_pov80, pc70_80, pc50_16, pc50_80) -> one_km_grid_final
+
+half_km_grid_join4 %>%
+  mutate(p_blk16 = (blackE / race_dE) * 100, 
+         p_pov16 = (in_povE / pov_dE) * 100,
+         p_pooh16 = (ppoohuE / ppohuE) * 100,
+         p_vac16 = (vac_huE / huE) * 100,
+         pc70_16 = ((popE - pop70) / pop70) * 100,
+         crime_r = (crime / popE),
+         barr_r = (barriers / popE),
+         p_blk80 = (nhblk80 / pop80) * 100,
+         p_vac80 = (vhu80 / hu80) * 100,
+         p_pov80 = (inpov80 / povd80) * 100,
+         pc70_80 = ((pop80 - pop70) / pop70) * 100,
+         pc50_16 = ((popE - pop50) / pop50) * 100,
+         pc50_80 = ((pop80 - pop50) / pop50) * 100) %>%
+  select(popE, p_blk16, p_pov16, p_pooh16, p_vac16, pc70_16, barriers, crime, storef, inters, crime_r, barr_r, pop80, p_blk80, p_vac80, p_pov80, pc70_80, pc50_16, pc50_80) -> half_km_grid_final
+
+quarter_km_grid_join4 %>%
+  mutate(p_blk16 = (blackE / race_dE) * 100, 
+         p_pov16 = (in_povE / pov_dE) * 100,
+         p_pooh16 = (ppoohuE / ppohuE) * 100,
+         p_vac16 = (vac_huE / huE) * 100,
+         pc70_16 = ((popE - pop70) / pop70) * 100,
+         crime_r = (crime / popE),
+         barr_r = (barriers / popE),
+         p_blk80 = (nhblk80 / pop80) * 100,
+         p_vac80 = (vhu80 / hu80) * 100,
+         p_pov80 = (inpov80 / povd80) * 100,
+         pc70_80 = ((pop80 - pop70) / pop70) * 100,
+         pc50_16 = ((popE - pop50) / pop50) * 100,
+         pc50_80 = ((pop80 - pop50) / pop50) * 100) %>%
+  select(popE, p_blk16, p_pov16, p_pooh16, p_vac16, pc70_16, barriers, crime, storef, inters, crime_r, barr_r, pop80, p_blk80, p_vac80, p_pov80, pc70_80, pc50_16, pc50_80)-> quarter_km_grid_final
+```
+
+Save the final three grid datasets
+```{r}
+st_write(one_km_grid_final, here("data/clean/one_km_grid.shp"), delete_layer = TRUE)
+st_write(half_km_grid_final, here("data/clean/half_km_grid.shp"), delete_layer = TRUE)
+st_write(quarter_km_grid_final, here("data/clean/quarter_km_grid.shp"), delete_layer = TRUE)
+```
+
+
+
