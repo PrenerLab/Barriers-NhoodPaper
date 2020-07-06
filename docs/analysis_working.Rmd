@@ -1,0 +1,289 @@
+---
+title: "Street Barriers and Crime - Poisson Models"
+
+This notebook fits poisson, negative binomial, and zero-inflated binomial models for violent- crime and street barrier locations.
+---
+
+Clear existing environment
+```{r}
+remove(list = ls())
+```
+
+
+Import packages
+```{r}
+# spatial packages
+library(sf)
+library(sp)
+library(spdep)
+
+# modeling packages
+library(MASS)
+library(pscl)
+library(spatialreg)
+
+# other packages
+library(here)
+library(stargazer)
+```
+
+Import grid data
+```{r}
+one_km <- st_read("data/clean/one_km_grid.shp")
+half_km <- st_read("data/clean/half_km_grid.shp")
+quarter_km <- st_read("data/clean/quarter_km_grid.shp")
+```
+
+Calcuate mean and variance of violent crimes.
+```{r}
+cat("The mean number of violent crimes per one square kilometer grid square is", mean(one_km$crime), "and the variance is", var(one_km$crime), "\n\n")
+
+```
+Calcuate mean and variance of barriers.
+```{r}
+cat("The mean number of barriers per one square kilometer grid square is", mean(one_km$barriers), "and the variance is", var(one_km$barriers), "\n\n")
+
+```
+
+Get a sense of the distribution/number of zero counts for both crime and barriers.
+```{r}
+table(one_km$crime)
+table(one_km$barriers)
+```
+
+# Spatial Weights
+
+Create a rook spatial weights matrix
+```{r}
+weights <- poly2nb(one_km, queen=FALSE)
+weights <- nb2listw(weights, style="C", zero.policy=TRUE)
+```
+
+
+## Moran's I
+
+```{r}
+moran.test(one_km$crime,weights)
+```
+
+## Crime Models
+Fit a standard poisson model
+```{r}
+model.poisson <- glm(crime ~ barriers+popE+storef+scale(p_blk16)+scale(p_pov16)+scale(p_pooh16)+scale(p_vac16)+scale(pc70_16), data=one_km, family=poisson())
+summary(model.poisson)
+```
+
+
+```{r}
+lm.morantest(model.poisson, listw = weights)
+```
+
+We have some evidence of residual spatial autocorrelation. This suggests that we may need some kind of corrective to address this issue. Next, let's check for overdispersion. 
+```{r}
+AER::dispersiontest(model.poisson, alternative = "two.sided")
+```
+We have evidence of overdispersion, so let's move on the the negative binomial model.
+
+## Negative Binomial
+
+```{r}
+model.nb <- glm.nb(crime ~ barriers + popE + storef + scale(p_blk16) + scale(p_pov16) + scale(p_pooh16) + scale(p_vac16) + scale(pc70_16), data=one_km)
+
+summary(model.nb)
+```
+
+```{r}
+round(exp(coef(model.nb)), 3)
+```
+
+Use the moran eigenvector filtering function to remove spatial autocorrelation from the residuals.
+```{r}
+me.fit<-ME(crime ~ popE + barriers + storef + p_blk16 + p_pov16 + p_pooh16 + p_vac16 + pc70_16, data = one_km, family = negative.binomial(1.419), listw = weights, verbose = TRUE, alpha = .05)
+```
+
+```{r}
+me.fit
+```
+Run a new negative binomial model with the selected eigenvectors added to the right-hand side.
+```{r}
+model.nb2 <- glm.nb(crime ~ barriers + popE + storef + scale(p_blk16) + scale(p_pov16) + scale(p_pooh16) + scale(p_vac16) + scale(pc70_16) + fitted(me.fit), data = one_km)
+
+summary(model.nb2)
+```
+
+Compare spatial autocorrelation of the residuals between the negative binomial models with and without spatial eigenvector filtering.
+```{r}
+lm.morantest(model.nb, listw = weights)
+lm.morantest(model.nb2, listw = weights)
+```
+We observe a minor decrease in spatial autocorrelation.
+
+```{r}
+round(exp(coef(model.nb2)), 3)
+```
+
+Write function to exponentiate the coefficients for ease of interpretation.
+```{r}
+coef.to.exp <- function(x) (exp(x))
+```
+
+Note the significance levels on the below stargazer table need correcting.
+```{r}
+stargazer(model.poisson, model.nb, model.nb2, type='text', apply.coef=coef.to.exp)
+```
+
+## Count models with barriers as the dependent variable
+
+Check for spatial autocorrelation for barriers
+```{r}
+moran.test(one_km$barriers,weights)
+```
+
+We're going to fit barrier models using data from two periods in time. First, 2016 data is used to ascertain the contemporary social correlates of barrier placement. Second, 1980 data is used to ascertain the social correlates of barriers during a time that preceded the vast majority of barrier installations.
+
+### 2016 data
+
+Fit a standard poisson model
+```{r}
+b_model.poisson <- glm(barriers ~ popE + scale(p_blk16) + scale(p_pooh16) + scale(p_vac16) + scale(p_pov16) + scale(pc70_16), data=one_km, family=poisson())
+
+summary(b_model.poisson)
+```
+Note the warning: "glm.fit: fitted rates numerically 0 occurred". This suggests a separation in the data between 0 and non-zero values. There may be fundamentally different processes behind 0 and non-zero grid squares.
+
+Check for spatial autocorrelation in the residuals
+```{r}
+lm.morantest(b_model.poisson, listw = weights)
+```
+High Moran's I is suggestive of extensive spatial autocorrelation, though it's not statistically significant.
+
+```{r}
+AER::dispersiontest(b_model.poisson, alternative = "two.sided")
+```
+Overdispersion is present, suggesting the need for a negative binomial model.
+
+
+Negative binomial model
+
+```{r}
+b_model.nb <- glm.nb(barriers ~ popE + scale(p_blk16) + scale(p_pooh16) + scale(p_vac16) + scale(p_pov16) + scale(pc70_16), data=one_km)
+
+summary(b_model.nb)
+```
+Once again we have the "glm.fit: fitted rates numerically 0 occurred" warning.
+
+Get the coefficients for the first binomial barriers model
+```{r}
+round(exp(coef(b_model.nb)), 3)
+```
+
+Use the moran eigenvector filtering function to remove spatial autocorrelation from the residuals.
+```{r}
+b_me.fit<-ME(barriers ~ popE + scale(p_blk16) + scale(p_pooh16) + scale(p_vac16) + scale(p_pov16) + scale(pc70_16), data = one_km, family = negative.binomial(.4590), listw = weights, verbose = TRUE, alpha = .05)
+```
+ALgorithm convergence issues—may be ok given the lack of statistically significant Moran's I, but let's run through the motions anyways.
+```{r}
+b_me.fit
+```
+
+```{r}
+b_model.nb2 <- glm.nb(barriers ~ popE + scale(p_blk16) + scale(p_pooh16) + scale(p_vac16) + scale(p_pov16) + scale(pc70_16) + fitted(b_me.fit), data = one_km, control=glm.control(maxit=100)) #increased max interations from 25 to 100 so that the algorithm would converge, but it still didn't work.
+
+summary(b_model.nb2)
+```
+
+```{r}
+lm.morantest(b_model.nb, listw = weights)
+lm.morantest(b_model.nb2, listw = weights)
+```
+Moran's I values are negligible for the filtered models, suggessting that this isn't the appropriate method for modeling barrier locations using 2016 data. To account for this, let's run a zero-inflated poisson model.
+
+```{r}
+b_model.zoin <- zeroinfl(barriers ~ popE + scale(p_blk16) + scale(p_pooh16) + scale(p_vac16) + scale(p_pov16) + scale(pc70_16), dist = "poisson", data = one_km)
+
+summary(b_model.zoin)
+```
+
+Zero-inflation barriers model with eigenvector filtering
+```{r}
+b_model2.zoin <- zeroinfl(barriers ~ popE + p_blk16 + p_pooh16 + p_vac16 + p_pov16 + fitted(b_me.fit), dist = "poisson", data = one_km)
+
+summary(b_model2.zoin)
+```
+
+```{r}
+AIC(b_model.zoin)
+AIC(b_model2.zoin)
+```
+
+### 1980 Data
+
+Fit a standard poisson model
+```{r}
+b80_model.poisson <- glm(barriers ~ pop80 + scale(p_blk80) + scale(p_vac80) + scale(p_pov80) + scale(pc50_80), data=one_km, family=poisson())
+
+summary(b80_model.poisson)
+```
+
+Check for spatial autocorrelation in the residuals
+```{r}
+lm.morantest(b80_model.poisson, listw = weights)
+```
+Moran's I is suggestive of the presence of spatial autocorrelation in the residuals.
+
+```{r}
+AER::dispersiontest(b80_model.poisson, alternative = "two.sided")
+```
+Overdispersion is present, suggesting the need for a negative binomial model.
+
+Negative binomial model
+
+```{r}
+b80_model.nb <- glm.nb(barriers ~ pop80 + scale(p_blk80) + scale(p_vac80) + scale(p_pov80) + scale(pc50_80), data=one_km)
+
+summary(b80_model.nb)
+```
+
+Use the moran eigenvector filtering function to remove spatial autocorrelation from the residuals.
+```{r}
+b80_me.fit<-ME(barriers ~ pop80 + scale(p_blk80) + scale(p_vac80) + scale(p_pov80) + scale(pc50_80), data = one_km, family = negative.binomial(.627), listw = weights, verbose = TRUE, alpha = .05)
+```
+
+```{r}
+b80_me.fit
+```
+
+```{r}
+b80_model.nb2 <- glm.nb(barriers ~ pop80 + scale(p_blk80) + scale(p_vac80) + scale(p_pov80) + scale(pc50_80) + fitted(b80_me.fit), data = one_km)
+
+summary(b80_model.nb2)
+```
+
+Compare the Moran's I of the residuals
+```{r}
+lm.morantest(b80_model.nb, listw = weights)
+lm.morantest(b80_model.nb2, listw = weights)
+```
+
+Zero-inflated model
+```{r}
+b80_model.zoin <- zeroinfl(barriers ~ pop80 + scale(p_blk80) + scale(p_vac80) + scale(p_pov80) + scale(pc50_80), dist = "poisson", data = one_km)
+
+summary(b80_model.zoin)
+```
+
+Zero-inflation barriers model with eigenvector filtering
+```{r}
+b80_model2.zoin <- zeroinfl(barriers ~ pop80 + scale(p_blk80) + scale(p_vac80) + scale(p_pov80) + 
+    scale(pc50_80)+ fitted(b80_me.fit), dist = "poisson", data = one_km)
+
+summary(b80_model2.zoin)
+```
+
+```{r}
+AIC(b80_model.zoin)
+AIC(b80_model2.zoin)
+```
+
+
+
