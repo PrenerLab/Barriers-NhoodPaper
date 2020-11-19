@@ -29,9 +29,9 @@ library(stargazer)
 
 Import grid data
 ```{r}
-one_km <- st_read("data/clean/one_km_grid.shp")
-half_km <- st_read("data/clean/half_km_grid.shp")
-quarter_km <- st_read("data/clean/quarter_km_grid.shp")
+one_km <- st_read("../data/clean/one_km_grid.shp")
+half_km <- st_read("../data/clean/half_km_grid.shp")
+quarter_km <- st_read("../data/clean/quarter_km_grid.shp")
 ```
 
 Calcuate mean and variance of violent crimes.
