@@ -69,7 +69,7 @@ moran.test(one_km$crime,weights)
 ## Crime Models
 Fit a standard poisson model
 ```{r}
-model.poisson <- glm(crime ~ barriers+popE+storef+scale(p_blk16)+scale(p_pov16)+scale(p_pooh16)+scale(p_vac16)+scale(pc70_16), data=one_km, family=poisson())
+model.poisson <- glm(crime ~ scale(barriers) + scale(popE) + scale(storef)+scale(p_blk16)+scale(p_pov16)+scale(p_pooh16)+scale(p_vac16)+scale(pc50_16), data=one_km, family=poisson())
 summary(model.poisson)
 ```
 
@@ -87,7 +87,7 @@ We have evidence of overdispersion, so let's move on the the negative binomial m
 ## Negative Binomial
 
 ```{r}
-model.nb <- glm.nb(crime ~ barriers + popE + storef + scale(p_blk16) + scale(p_pov16) + scale(p_pooh16) + scale(p_vac16) + scale(pc70_16), data=one_km)
+model.nb <- glm.nb(crime ~ scale(barriers) + scale(popE) + scale(storef) + scale(p_blk16) + scale(p_pov16) + scale(p_pooh16) + scale(p_vac16) + scale(pc50_16), data=one_km)
 
 summary(model.nb)
 ```
@@ -97,16 +97,18 @@ round(exp(coef(model.nb)), 3)
 ```
 
 Use the moran eigenvector filtering function to remove spatial autocorrelation from the residuals.
+
 ```{r}
-me.fit<-ME(crime ~ popE + barriers + storef + p_blk16 + p_pov16 + p_pooh16 + p_vac16 + pc70_16, data = one_km, family = negative.binomial(1.419), listw = weights, verbose = TRUE, alpha = .05)
+me.fit<-ME(crime ~ scale(barriers) + scale(popE) + scale(storef) + scale(p_blk16) + scale(p_pov16) + scale(p_pooh16) + scale(p_vac16) + scale(pc70_16), data = one_km, family = negative.binomial(1.431), listw = weights, verbose = TRUE, alpha = .05)
 ```
 
 ```{r}
 me.fit
 ```
+
 Run a new negative binomial model with the selected eigenvectors added to the right-hand side.
 ```{r}
-model.nb2 <- glm.nb(crime ~ barriers + popE + storef + scale(p_blk16) + scale(p_pov16) + scale(p_pooh16) + scale(p_vac16) + scale(pc70_16) + fitted(me.fit), data = one_km)
+model.nb2 <- glm.nb(crime ~ scale(barriers) + scale(popE) + scale(storef) + scale(p_blk16) + scale(p_pov16) + scale(p_pooh16) + scale(p_vac16) + scale(pc50_16) + fitted(me.fit), data = one_km)
 
 summary(model.nb2)
 ```
@@ -199,14 +201,14 @@ lm.morantest(b_model.nb2, listw = weights)
 Moran's I values are negligible for the filtered models, suggessting that this isn't the appropriate method for modeling barrier locations using 2016 data. To account for this, let's run a zero-inflated poisson model.
 
 ```{r}
-b_model.zoin <- zeroinfl(barriers ~ popE + scale(p_blk16) + scale(p_pooh16) + scale(p_vac16) + scale(p_pov16) + scale(pc70_16), dist = "poisson", data = one_km)
+b_model.zoin <- zeroinfl(barriers ~ scale(p_blk16) + scale(p_pooh16) + scale(p_vac16) + scale(p_pov16) + scale(pc70_16), dist = "poisson", data = one_km)
 
 summary(b_model.zoin)
 ```
 
 Zero-inflation barriers model with eigenvector filtering
 ```{r}
-b_model2.zoin <- zeroinfl(barriers ~ popE + p_blk16 + p_pooh16 + p_vac16 + p_pov16 + fitted(b_me.fit), dist = "poisson", data = one_km)
+b_model2.zoin <- zeroinfl(barriers ~ p_blk16 + p_pooh16 + p_vac16 + p_pov16 + fitted(b_me.fit), dist = "poisson", data = one_km)
 
 summary(b_model2.zoin)
 ```
@@ -254,7 +256,7 @@ b80_me.fit
 ```
 
 ```{r}
-b80_model.nb2 <- glm.nb(barriers ~ pop80 + scale(p_blk80) + scale(p_vac80) + scale(p_pov80) + scale(pc50_80) + fitted(b80_me.fit), data = one_km)
+b80_model.nb2 <- glm.nb(barriers ~ scale(pop80) + scale(p_blk80) + scale(p_vac80) + scale(p_pov80) + scale(pc50_80) + fitted(b80_me.fit), data = one_km)
 
 summary(b80_model.nb2)
 ```
@@ -267,14 +269,14 @@ lm.morantest(b80_model.nb2, listw = weights)
 
 Zero-inflated model
 ```{r}
-b80_model.zoin <- zeroinfl(barriers ~ pop80 + scale(p_blk80) + scale(p_vac80) + scale(p_pov80) + scale(pc50_80), dist = "poisson", data = one_km)
+b80_model.zoin <- zeroinfl(barriers ~ scale(pop80) + scale(p_blk80) + scale(p_vac80) + scale(p_pov80) + scale(pc50_80), dist = "poisson", data = one_km)
 
 summary(b80_model.zoin)
 ```
 
 Zero-inflation barriers model with eigenvector filtering
 ```{r}
-b80_model2.zoin <- zeroinfl(barriers ~ pop80 + scale(p_blk80) + scale(p_vac80) + scale(p_pov80) + 
+b80_model2.zoin <- zeroinfl(barriers ~ scale(pop80) + scale(p_blk80) + scale(p_vac80) + scale(p_pov80) + 
     scale(pc50_80)+ fitted(b80_me.fit), dist = "poisson", data = one_km)
 
 summary(b80_model2.zoin)

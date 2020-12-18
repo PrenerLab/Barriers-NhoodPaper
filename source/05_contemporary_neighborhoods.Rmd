@@ -1,0 +1,47 @@
+---
+title: "05 - Contemporary Neighborhoods"
+author: "Christopher Prener, Ph.D."
+date: '(`r format(Sys.time(), "%B %d, %Y")`)'
+output: github_document
+---
+
+## Introduction
+This notebook creates a correlation matrix for our contemporary demographic variables and barrier density.
+
+## Dependencies
+This notebook requires the following packages
+
+```{r load-packages}
+# tidyverse packages
+library(dplyr)
+
+# spatial packages
+library(sf)
+
+# other packages
+library(here)
+```
+
+We'll also use the following custom function:
+
+```{r load-functions}
+source(here("source", "corr_table.R"))
+```
+
+## Load Data
+This notebook requires our grid square data:
+
+```{r load-data}
+one_km <- st_read(here("data", "clean", "one_km_grid.shp"))
+st_geometry(one_km) <- NULL
+```
+
+## Correlations
+
+```{r}
+one_km %>%
+  select(barriers, p_blk16, p_pov16, p_pooh16, p_vac16, pc50_16) %>%
+  corr_table(one_km, coef = "pearson")
+```
+
+
