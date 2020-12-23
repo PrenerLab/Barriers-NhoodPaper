@@ -129,9 +129,43 @@ Write function to exponentiate the coefficients for ease of interpretation.
 coef.to.exp <- function(x) (exp(x))
 ```
 
-Note the significance levels on the below stargazer table need correcting.
+Write function to summarize moran's i values:
+
 ```{r}
-stargazer(model.poisson, model.nb, model.nb2, type='text', apply.coef=coef.to.exp)
+moran.summary <- function(model, weights){
+  
+  test <- lm.morantest(model, listw = weights)
+  
+  stars <- symnum(test$p.value, corr = FALSE, na = FALSE, legend = FALSE,
+         cutpoints = c(0, 0.001, 0.01, 0.05), 
+         symbols = c("***", "**", "*"))
+  
+  out <- paste0(round(as.numeric(test$estimate[1]), digits = 3), "<sup>", stars, "</sup>")
+  
+  return(out)
+  
+}
+```
+
+
+```{r}
+stargazer(model.poisson, model.nb, model.nb2, type= "html",
+          apply.coef=coef.to.exp, t.auto=F, p.auto=F, report = "vct*",
+          title = "Violent Crimes per Grid Square",
+          add.lines = list(
+            c("AIC", round(AIC(model.poisson), digits = 3), round(AIC(model.nb), digits = 3), round(AIC(model.nb2), digits = 3)),
+            c("BIC", round(BIC(model.poisson), digits = 3), round(BIC(model.nb), digits = 3), round(BIC(model.nb2), digits = 3)),
+            c("Moran's I", moran.summary(model.poisson, weights), moran.summary(model.nb, weights), moran.summary(model.nb2, weights))),
+          covariate.labels = c("Barriers", "Population, 2016", "Store Front Businesses", "% African American, 2016", 
+                               "% Poverty, 2016", "% Owner Occupied", "% Vacant", "% Population Change, 1950-2016",
+                               "Eigenvector 3", "Eigenvector 11"),
+          star.cutoffs = c(0.05, 0.01, 0.001),
+          column.labels = c("(4)", "(5)", "(6)"),
+          model.numbers=FALSE,
+          dep.var.labels = "Violent Crimes",
+          omit.stat = c("rsq", "aic"),
+          digits = 3,
+          out = here::here("results", "tables", "models2.html"))
 ```
 
 ## Count models with barriers as the dependent variable
@@ -194,7 +228,8 @@ lm.morantest(b80_model.nb2, listw = weights)
 
 Zero-inflated model
 ```{r}
-b80_model.zoin <- zeroinfl(barriers ~ scale(pop80) + scale(p_blk80) + scale(p_vac80) + scale(p_pov80) + scale(pc50_80), dist = "poisson", data = one_km)
+b80_model.zoin <- zeroinfl(barriers ~ scale(pop80) + scale(p_blk80) + scale(p_vac80) + scale(p_pov80) + scale(pc50_80), 
+                           dist = "negbin", data = one_km)
 
 summary(b80_model.zoin)
 ```
@@ -202,15 +237,41 @@ summary(b80_model.zoin)
 Zero-inflation barriers model with eigenvector filtering
 ```{r}
 b80_model2.zoin <- zeroinfl(barriers ~ scale(pop80) + scale(p_blk80) + scale(p_vac80) + scale(p_pov80) + 
-    scale(pc50_80)+ fitted(b80_me.fit), dist = "poisson", data = one_km)
+    scale(pc50_80)+ fitted(b80_me.fit) | scale(pop80) + fitted(b80_me.fit), dist = "negbin", data = one_km)
 
 summary(b80_model2.zoin)
 ```
 
 ```{r}
+vuong(b80_model.nb2, b80_model2.zoin)
+```
+
+
+```{r}
+AIC(b80_model.nb)
+AIC(b80_model.nb2)
 AIC(b80_model.zoin)
 AIC(b80_model2.zoin)
 ```
+
+```{r}
+stargazer(b80_model.poisson, b80_model.nb, b80_model.nb2, type = "html",
+          apply.coef=coef.to.exp, t.auto=F, p.auto=F, report = "vct*",
+          title = "Barriers per Grid Square",
+          add.lines = list(
+            c("AIC", round(AIC(b80_model.poisson), digits = 3), round(AIC(b80_model.nb), digits = 3), round(AIC(b80_model.nb2), digits = 3)),
+            c("BIC", round(BIC(b80_model.poisson), digits = 3), round(BIC(b80_model.nb), digits = 3), round(BIC(b80_model.nb2), digits = 3)),
+            c("Moran's I", moran.summary(b80_model.poisson, weights), moran.summary(b80_model.nb, weights), moran.summary(b80_model.nb2, weights))),
+          covariate.labels = c("Population, 1980", "% African American, 1980", "% Vacant, 1980", "% Poverty, 1980", "% Population Change, 1950-1980",
+                               "Eigenvector 1", "Eigenvector 2"),
+          star.cutoffs = c(0.05, 0.01, 0.001),
+          dep.var.labels = "Barriers",
+          omit.stat = c("rsq", "aic"),
+          single.row = TRUE,
+          digits = 3,
+          out = here::here("results", "tables", "models1.html"))
+```
+
 
 ```{r}
 stats <- dplyr::select(one_km, barriers, crime, pop80, p_blk80, p_vac80, p_pov80, pc50_80, pc50_16, 
